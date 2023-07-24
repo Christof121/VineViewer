@@ -16,6 +16,17 @@
     var redirectMaxTime = 5;
     var url;
     let redirectTimeout;
+    var addDate;
+    //Menü Elements
+    const id = [
+        //[ID,Label]
+        ["colorHighlight","Highlight Farbe","color"],
+        ["toggleHighlight","Ausblenden","checkbox"],
+        ["toggleScan","Nur Sichtbares Cachen","checkbox"],
+        ["toggleDate","Datum anzeigen","checkbox"],
+        ["toggleRecom","Empfehlungen ausblenden","checkbox"],
+        ["toggleFooter","Footer ausblenden","checkbox"]
+    ];
     'use strict';
 
     // CSS UI Button
@@ -183,7 +194,6 @@
 
     // CSS für das hinzugefügte Datumselement
     var dateElementCSS = `
-    display: inline-flex;
     justify-content: center;
     height: auto;
     width: 90%;
@@ -221,7 +231,27 @@
         const objectStore = db.createObjectStore(objectStoreName, { keyPath: "ID" });
     };
 
-
+    // Laden der Einstellungen
+    async function loadSettings(){
+        for(var x = 0; x < id.length; x++){
+            var ItemUID = id[x][0];
+            var value = getToggleStatus(ItemUID);
+            console.log("Status " + ItemUID + ": " + value);
+            switch (ItemUID) {
+                case "toggleScan":
+                    break;
+                case "toggleDate":
+                    addDate = value;
+                    break;
+                case "toggleRecom":
+                    toggleRecommendations(value)
+                    break;
+                case "toggleFooter":
+                    toggleFooter(value);
+                    break;
+            }
+        }
+    }
 
     // Funktion zum Erstellen der grünen Leiste
     async function createUI(){
@@ -239,7 +269,7 @@
             },200);
             //            settingPopupContent.style.opacity = "1";
             settingPopup.style.display = "flex";
-            settingPopup.style.width = "200px";
+            settingPopup.style.width = "250px";
             settingPopup.style.height = "300px";
             addUIButton.style.opacity = "0";
             addUIButton.style.cursor = "default";
@@ -261,12 +291,6 @@
     }
 
     async function createsettingPopup(){
-        const id = [
-            //[ID,Label]
-            ["toggleHighlight","Ausblenden"],
-            ["toggleScan","Nur Sichtbares Cachen"],
-            ["togglefooter","Footer ausblenden"]
-        ];
 
         var settingPopup = document.createElement('div');
         settingPopup.setAttribute('id', 'ui-setting');
@@ -354,7 +378,7 @@
         async function addItem(ItemID){
             var ItemUID = id[ItemID][0];
             var titel = id[ItemID][1];
-
+            var type = id[ItemID][2];
             var itemDiv = document.createElement("div");
             itemDiv.style.cssText = settingPopupItemCSS;
 
@@ -366,21 +390,36 @@
 
             // Erstellen der Checkbox
             var toggleSwitch = document.createElement('input');
-            toggleSwitch.setAttribute('type', 'checkbox');
-            toggleSwitch.setAttribute('id', id);
+            toggleSwitch.setAttribute('type', type);
+            toggleSwitch.setAttribute('id', ItemUID);
             toggleSwitch.style.bottom = "0px";
-            if(await getToggleStatus(ItemUID)){
+            toggleSwitch.setAttribute('value', "#FFFFFF");
+            if(await getToggleStatus(ItemUID) && type == "checkbox"){
                 toggleSwitch.setAttribute('checked', 'true');
+            }else if(type == "color"){
+                var value = await getColorStatus(ItemUID);
+                toggleSwitch.setAttribute('value', value);
+                toggleSwitch.style.width = "22px";
+                toggleSwitch.style.height = "22px";
             }
             toggleSwitch.addEventListener('change', function() {
-                settingsClickEvent(ItemUID, this.checked);
-                saveToggleStatus(ItemUID, this.checked);
+                switch(type){
+                    case "checkbox":
+                        settingsClickEvent(ItemUID, this.checked);
+                        saveToggleStatus(ItemUID, this.checked);
+                        break;
+                    case "color":
+                        settingsClickEvent(ItemUID, this.value);
+                        saveColorStatus(ItemUID, this.value);
+                        break;
+
+                }
             });
 
             // Erstellen des Labels
             var toggleLabel = document.createElement('label');
             toggleLabel.textContent = titel;
-            toggleLabel.setAttribute('for', 'togglehide');
+            toggleLabel.setAttribute('for', ItemUID);
 
             itemLeftDiv.appendChild(toggleSwitch);
             itemRightDiv.appendChild(toggleLabel);
@@ -393,6 +432,7 @@
             var Item = await addItem(x);
             itemsDiv.appendChild(Item);
         }
+
 
         closeButton.appendChild(closeButtonContent);
         titleDiv.appendChild(titleDivContent);
@@ -427,71 +467,71 @@
         toggleDiv.style.display = 'flex';
         toggleDiv.style.alignItems = 'center';
 
-        var toggleSwitch = document.createElement('input');
-        toggleSwitch.setAttribute('type', 'checkbox');
-        toggleSwitch.style.cssText = toggleSwitchCSS;
-        toggleSwitch.addEventListener('change', function() {
-            //toggleHighlightVisibility(this.checked);
-            //saveHighlightVisibility(this.checked);
-        });
-
-        var toggleLabel = document.createElement('label');
-        toggleLabel.textContent = 'Ausblenden';
-        toggleLabel.style.marginLeft = '5px';
-        toggleLabel.style.userSelect = 'none';
-
-        //toggleDiv.appendChild(toggleSwitch);
-        //toggleDiv.appendChild(toggleLabel);
-
-        var toggleScanSwitch = document.createElement('input');
-        toggleScanSwitch.setAttribute('type', 'checkbox');
-        toggleScanSwitch.style.cssText = toggleSwitchCSS;
-        toggleScanSwitch.addEventListener('change', function() {
-            //toggleScanVisibility(this.checked);
-            //saveScanVisibility(this.checked);
-        });
-
-        var toggleScanLabel = document.createElement('label');
-        toggleScanLabel.textContent = 'Nur Sichtbares Cachen';
-        toggleScanLabel.style.marginLeft = '5px';
-        toggleScanLabel.style.userSelect = 'none';
-
-        toggleDiv.appendChild(toggleScanSwitch);
-        toggleDiv.appendChild(toggleScanLabel);
-
-        var ScanPageInput = document.createElement('input');
-        if(localStorage.getItem('scanToPage') != undefined){
-            var scanToPage = localStorage.getItem('scanToPage');
-        }else{
-            scanToPage = getMaxPage();
-        }
-        if(localStorage.getItem("autoScan")=="true"){
-            ScanPageInput.setAttribute('disabled' , 'true');
-        }
-        ScanPageInput.setAttribute('type', 'number');
-        ScanPageInput.setAttribute('maxlength', '3');
-        ScanPageInput.style.cssText = ScanPageInputCSS;
-        ScanPageInput.value = scanToPage;
-        ScanPageInput.addEventListener('change', function() {
-            console.log("Input");
-            var valid = checkScanPageInput(this.value);
-            if(!valid){
-                this.value = getMaxPage();
-            }
-        });
-
-        var scanButton = document.createElement('button');
-        var buttonText = "Start Scan";
-        if(localStorage.getItem("autoScan")=="true"){
-            buttonText = "Stop Scan";
-        }
-        scanButton.textContent = buttonText;
-        scanButton.style.marginLeft = '10px';
-        scanButton.addEventListener('click', function() {
-            AutoScanStart(ScanPageInput.value);
-        });
-        toggleDiv.appendChild(ScanPageInput);
-        toggleDiv.appendChild(scanButton);
+        //        var toggleSwitch = document.createElement('input');
+        //        toggleSwitch.setAttribute('type', 'checkbox');
+        //        toggleSwitch.style.cssText = toggleSwitchCSS;
+        //        toggleSwitch.addEventListener('change', function() {
+        //            //toggleHighlightVisibility(this.checked);
+        //            //saveHighlightVisibility(this.checked);
+        //        });
+        //
+        //        var toggleLabel = document.createElement('label');
+        //        toggleLabel.textContent = 'Ausblenden';
+        //        toggleLabel.style.marginLeft = '5px';
+        //        toggleLabel.style.userSelect = 'none';
+        //
+        //        //toggleDiv.appendChild(toggleSwitch);
+        //        //toggleDiv.appendChild(toggleLabel);
+        //
+        //        var toggleScanSwitch = document.createElement('input');
+        //        toggleScanSwitch.setAttribute('type', 'checkbox');
+        //        toggleScanSwitch.style.cssText = toggleSwitchCSS;
+        //        toggleScanSwitch.addEventListener('change', function() {
+        //            //toggleScanVisibility(this.checked);
+        //            //saveScanVisibility(this.checked);
+        //        });
+        //
+        //        var toggleScanLabel = document.createElement('label');
+        //        toggleScanLabel.textContent = 'Nur Sichtbares Cachen';
+        //        toggleScanLabel.style.marginLeft = '5px';
+        //        toggleScanLabel.style.userSelect = 'none';
+        //
+        //        toggleDiv.appendChild(toggleScanSwitch);
+        //        toggleDiv.appendChild(toggleScanLabel);
+        //
+        //        var ScanPageInput = document.createElement('input');
+        //        if(localStorage.getItem('scanToPage') != undefined){
+        //            var scanToPage = localStorage.getItem('scanToPage');
+        //        }else{
+        //            scanToPage = getMaxPage();
+        //        }
+        //        if(localStorage.getItem("autoScan")=="true"){
+        //            ScanPageInput.setAttribute('disabled' , 'true');
+        //        }
+        //        ScanPageInput.setAttribute('type', 'number');
+        //        ScanPageInput.setAttribute('maxlength', '3');
+        //        ScanPageInput.style.cssText = ScanPageInputCSS;
+        //        ScanPageInput.value = scanToPage;
+        //        ScanPageInput.addEventListener('change', function() {
+        //            console.log("Input");
+        //            var valid = checkScanPageInput(this.value);
+        //            if(!valid){
+        //                this.value = getMaxPage();
+        //            }
+        //        });
+        //
+        //        var scanButton = document.createElement('button');
+        //        var buttonText = "Start Scan";
+        //        if(localStorage.getItem("autoScan")=="true"){
+        //            buttonText = "Stop Scan";
+        //        }
+        //        scanButton.textContent = buttonText;
+        //        scanButton.style.marginLeft = '10px';
+        //        scanButton.addEventListener('click', function() {
+        //            AutoScanStart(ScanPageInput.value);
+        //        });
+        //        toggleDiv.appendChild(ScanPageInput);
+        //        toggleDiv.appendChild(scanButton);
 
         var titleDiv = document.createElement('div');
         titleDiv.style.display = 'flex';
@@ -536,23 +576,48 @@
         document.body.prepend(greenBar);
 
         var highlightVisibility = getToggleStatus("toggleHighlight");
-        toggleSwitch.checked = highlightVisibility;
+        //        toggleSwitch.checked = highlightVisibility;
         toggleHighlightVisibility(highlightVisibility);
 
         var scanVisibility = getToggleStatus("toggleScan");
-        toggleScanSwitch.checked = scanVisibility;
+        //        toggleScanSwitch.checked = scanVisibility;
     }
 
     async function settingsClickEvent(ItemUID, value){
         switch (ItemUID){
+            case "colorHighlight":
+                highlightCachedProducts();
+                break;
             case "toggleHighlight":
                 toggleHighlightVisibility(value);
                 break;
-            case "togglefooter":
+            case "toggleDate":
+                toggleDate(value);
+                break;
+            case "toggleRecom":
+                toggleRecommendations(value);
+                break;
+            case "toggleFooter":
                 toggleFooter(value);
-                console.log("Footer");
                 break;
         }
+    }
+
+
+    function toggleDate(value) {
+        const dateElements = document.querySelectorAll('[id="p-date"]');
+        dateElements.forEach(function(element){
+            if(value){
+                element.style.display = "inline-flex";
+            }else{
+                element.style.display = "none";
+            }
+        });
+    }
+
+    function toggleRecommendations(value) {
+        const recom = document.getElementById('rhf');
+        recom.hidden = value;
     }
 
     function toggleFooter(value){
@@ -588,6 +653,16 @@
     function getToggleStatus(ItemUID){
         const toggleStatus = localStorage.getItem(ItemUID);
         return toggleStatus === 'true';
+    }
+
+    // Funktion zum Abfragen des Toggle Status
+    function saveColorStatus(ItemUID, value){
+        localStorage.setItem(ItemUID, value);
+    }
+
+    function getColorStatus(ItemUID){
+        const value = localStorage.getItem(ItemUID);
+        return value;
     }
 
     //##################################### OLD CODE #####################################
@@ -659,23 +734,34 @@
         for (var i = 0; i < productTiles.length; i++) {
             var productTile = productTiles[i];
             var productID = getProductID(productTile);
+            var color = await getColorStatus("colorHighlight");
             if(await checkForIDInDatabase(productID)){
                 //if (cachedProductIDs.includes(productID)) {
                 productTile.classList.add('highlighted');
-                productTile.style.backgroundColor = 'lightgreen';
-
-                var date = await getSavedDate(productID);
-                addDateElement(productTile, date);
+                productTile.style.backgroundColor = color;
+                var dateDiv = productTile.querySelector('#p-date');
+                if(!dateDiv){
+                    var date = await getSavedDate(productID);
+                    addDateElement(productTile, date);
+                }
             }
         }
     }
 
     // Funktion zum Hinzufügen des Datums zu einem Produkt-Tile
-    function addDateElement(productTile, date) {
+    async function addDateElement(productTile, date) {
         var dateElement = document.createElement('div');
+        dateElement.setAttribute("id", "p-date");
+        dateElement.hidden = addDate;
         dateElement.classList.add('highlightCachedProducts');
         dateElement.textContent = date;
         dateElement.style.cssText = dateElementCSS;
+        if(await getToggleStatus("toggleDate")){
+            dateElement.style.display = "inline-flex";
+        } else {
+            dateElement.style.display = "none";
+        }
+        dateElement.hidden = "true";
 
         var contentContainer = productTile.querySelector('.vvp-item-tile-content');
         contentContainer.insertBefore(dateElement, contentContainer.firstChild);
@@ -991,7 +1077,6 @@
             };
 
             request.onsuccess = function(event) {
-                console.log("Datenabruf erfolgreich");
                 const db = event.target.result;
 
                 const transaction = db.transaction([objectStoreName], "readonly");
@@ -1280,6 +1365,9 @@
         var currentPage;
         var maxPage;
         var rand;
+        await document.addEventListener('DOMContentLoaded', function() {
+        loadSettings();
+        });
         saveCurrentPage();
         saveMaxPage();
         await createUI();
