@@ -18,6 +18,101 @@
     let redirectTimeout;
     'use strict';
 
+    // CSS UI Button
+    var uiButtonCSS = `
+    position: fixed;
+    left: 10px;
+    bottom: 10px;
+    z-index: 9999;
+    width: 30px;
+    height: 30px;
+    background-color: #232f3e;
+    border: black 2px solid;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    opacity: 1;
+    transition: opacity 0.2s;
+    `;
+
+    var uiButtonContentCSS = `
+    font-size: 1.75vh;
+    `
+
+    var settingPopupCSS = `
+    display: flex;
+    position: fixed;
+    left: 10px;
+    bottom: 10px;
+    width: 30px;
+    height: 30px;
+    z-index: 9999;
+    border: black 2px solid;
+    border-radius: 5px;
+    background-color: #232f3e;
+    transition: width 0.5s, height 0.5s;
+    color: white;
+    `
+
+    var settingPopupContentCSS = `
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 0.5s;
+    `
+
+    var settingPopupCloseButton = `
+    width: 10px;
+    height: 10px;
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    cursor: pointer;
+    `
+
+    var titleDivCSS = `
+    width: 100%;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    `
+
+    var titleDivContentCSS = `
+    transform: scale(1);
+    transition: transform 0.5s;
+    `
+
+    var settingPopupItemListCSS = `
+    width: 100%;
+    height: calc(100% - 25px);
+    `
+
+    var settingPopupItemCSS = `
+    width: 100%;
+    height: 25px;
+    display: flex;
+    `
+
+    var settingPopupItemLeftCSS = `
+    height: 100%;
+    width: 15%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* border-right: 1px solid black; */
+    `
+
+    var settingPopupItemRightCSS = `
+    height: 100%;
+    width: 85%;
+    display: flex;
+    align-items: center;
+    `
+
     // CSS für die grüne Leiste
     var greenBarCSS = `
   /* position: fixed; */
@@ -129,6 +224,200 @@
 
 
     // Funktion zum Erstellen der grünen Leiste
+    async function createUI(){
+        var uiIMGurl = "https://m.media-amazon.com/images/G/01/vine/website/vine_logo_title._CB1556578328_.png";
+
+        var addUIButton = document.createElement('div');
+        addUIButton.setAttribute('id', 'ui-button');
+        addUIButton.style.cssText = uiButtonCSS;
+        addUIButton.addEventListener('click', function() {
+            //addUIButton.style.display = "none";
+            var settingPopup = document.getElementById('ui-setting');
+            var settingPopupContent = document.getElementById('ui-setting-content');
+            setTimeout(() => {
+                settingPopupContent.style.opacity = "1";
+            },200);
+            //            settingPopupContent.style.opacity = "1";
+            settingPopup.style.display = "flex";
+            settingPopup.style.width = "200px";
+            settingPopup.style.height = "300px";
+            addUIButton.style.opacity = "0";
+            addUIButton.style.cursor = "default";
+
+        });
+
+        var addUIIMG = document.createElement('img');
+        addUIIMG.setAttribute('src' , uiIMGurl);
+
+        var addButtonContent = document.createElement('span');
+        addButtonContent.textContent = '⚙️';
+        addButtonContent.style.cssText = uiButtonContentCSS;
+
+        //addUIButton.appendChild(addUIIMG);
+        addUIButton.appendChild(addButtonContent);
+        document.body.prepend(addUIButton);
+        createsettingPopup();
+
+    }
+
+    async function createsettingPopup(){
+        const id = [
+            //[ID,Label]
+            ["toggleHighlight","Ausblenden"],
+            ["toggleScan","Nur Sichtbares Cachen"],
+            ["togglefooter","Footer ausblenden"]
+        ];
+
+        var settingPopup = document.createElement('div');
+        settingPopup.setAttribute('id', 'ui-setting');
+        settingPopup.style.cssText = settingPopupCSS;
+
+        var settingPopupContent = document.createElement('div');
+        settingPopupContent.setAttribute('id', 'ui-setting-content');
+        settingPopupContent.style.cssText = settingPopupContentCSS;
+
+        var closeButton = document.createElement('div');
+        closeButton.style.cssText = settingPopupCloseButton;
+
+        var closeButtonContent = document.createElement('span');
+        closeButtonContent.textContent = 'X';
+        closeButtonContent.addEventListener('click', function() {
+            // Close Setting Popup
+            var uiButton = document.getElementById('ui-button');
+            settingPopupContent.style.opacity = "0";
+            //settingPopup.style.display = "none";
+            setTimeout(() => {
+                settingPopup.style.width = "30px";
+                settingPopup.style.height = "30px";
+            }, 200);
+            //uiButton.style.display = "flex";
+            uiButton.style.opacity = "1";
+            uiButton.style.cursor = "pointer";
+
+        });
+
+        var titleDiv = document.createElement("div");
+        titleDiv.style.cssText = titleDivCSS;
+
+        var titleDivContent = document.createElement("span");
+        titleDivContent.style.cssText = titleDivContentCSS;
+        titleDivContent.textContent = "Einstellungen"
+
+        var itemsDiv = document.createElement("div");
+        itemsDiv.style.cssText = settingPopupItemListCSS
+
+        //var itemDiv = document.createElement("div");
+        //itemDiv.style.cssText = settingPopupItemCSS
+
+        //var itemLeftDiv = document.createElement("div");
+        //itemLeftDiv.style.cssText = settingPopupItemLeftCSS
+
+        ////Checkbox Ausblenden
+        //var toggleSwitch = document.createElement('input');
+        //toggleSwitch.setAttribute('type', 'checkbox');
+        //toggleSwitch.setAttribute('id', 'togglehide');
+        //toggleSwitch.style.bottom = "0px"
+        //if(await getHighlightVisibility()){
+        //    toggleSwitch.setAttribute('checked', 'true');
+        //}
+        //toggleSwitch.addEventListener('change', function() {
+        //    toggleHighlightVisibility(this.checked);
+        //    saveHighlightVisibility(this.checked);
+        //});
+        //
+        //var itemRightDiv = document.createElement("div");
+        //itemRightDiv.style.cssText = settingPopupItemRightCSS
+        //
+        ////Label Ausblenden
+        //var toggleLabel = document.createElement('label');
+        //toggleLabel.textContent = 'Ausblenden';
+        //toggleLabel.setAttribute('for', 'togglehide');
+        //
+        //
+        //// Toggle Nur sichtbares Cachen
+        //var toggleScanSwitch = document.createElement('input');
+        //toggleScanSwitch.setAttribute('type', 'checkbox');
+        //toggleScanSwitch.style.cssText = toggleSwitchCSS;
+        //if(await getScanVisibility()){
+        //    toggleSwitch.setAttribute('checked', 'true');
+        //}
+        //toggleScanSwitch.addEventListener('change', function() {
+        //    toggleScanVisibility(this.checked);
+        //    saveScanVisibility(this.checked);
+        //});
+        //
+        //var toggleScanLabel = document.createElement('label');
+        //toggleScanLabel.textContent = 'Nur Sichtbares Cachen';
+        //toggleScanLabel.style.marginLeft = '5px';
+        //toggleScanLabel.style.userSelect = 'none';
+
+        async function addItem(ItemID){
+            var ItemUID = id[ItemID][0];
+            var titel = id[ItemID][1];
+
+            var itemDiv = document.createElement("div");
+            itemDiv.style.cssText = settingPopupItemCSS;
+
+            var itemLeftDiv = document.createElement("div");
+            itemLeftDiv.style.cssText = settingPopupItemLeftCSS;
+
+            var itemRightDiv = document.createElement("div");
+            itemRightDiv.style.cssText = settingPopupItemRightCSS;
+
+            // Erstellen der Checkbox
+            var toggleSwitch = document.createElement('input');
+            toggleSwitch.setAttribute('type', 'checkbox');
+            toggleSwitch.setAttribute('id', id);
+            toggleSwitch.style.bottom = "0px";
+            if(await getToggleStatus(ItemUID)){
+                toggleSwitch.setAttribute('checked', 'true');
+            }
+            toggleSwitch.addEventListener('change', function() {
+                settingsClickEvent(ItemUID, this.checked);
+                saveToggleStatus(ItemUID, this.checked);
+            });
+
+            // Erstellen des Labels
+            var toggleLabel = document.createElement('label');
+            toggleLabel.textContent = titel;
+            toggleLabel.setAttribute('for', 'togglehide');
+
+            itemLeftDiv.appendChild(toggleSwitch);
+            itemRightDiv.appendChild(toggleLabel);
+            itemDiv.appendChild(itemLeftDiv);
+            itemDiv.appendChild(itemRightDiv);
+            return itemDiv;
+        }
+
+        for(var x = 0 ; x < id.length; x++){
+            var Item = await addItem(x);
+            itemsDiv.appendChild(Item);
+        }
+
+        closeButton.appendChild(closeButtonContent);
+        titleDiv.appendChild(titleDivContent);
+        settingPopupContent.appendChild(titleDiv);
+
+        // Hinzufügen der Hide Toggle
+        //itemLeftDiv.appendChild(toggleSwitch);
+        //itemDiv.appendChild(itemLeftDiv);
+        //itemRightDiv.appendChild(toggleLabel);
+        //itemDiv.appendChild(itemRightDiv);
+
+        // hinzufügen des Scan Toggles
+        //itemLeftDiv.appendChild(toggleScanSwitch);
+        //itemDiv.appendChild(itemLeftDiv);
+        //itemRightDiv.appendChild(toggleScanLabel);
+        //itemDiv.appendChild(itemRightDiv);
+        //itemsDiv.appendChild(itemDiv);
+
+        settingPopupContent.appendChild(itemsDiv);
+        settingPopupContent.appendChild(closeButton);
+        settingPopup.appendChild(settingPopupContent);
+        document.body.prepend(settingPopup);
+    }
+
+
     async function createGreenBar() {
         var greenBar = document.createElement('div');
         greenBar.setAttribute('id', 'green-bar');
@@ -142,8 +431,8 @@
         toggleSwitch.setAttribute('type', 'checkbox');
         toggleSwitch.style.cssText = toggleSwitchCSS;
         toggleSwitch.addEventListener('change', function() {
-            toggleHighlightVisibility(this.checked);
-            saveHighlightVisibility(this.checked);
+            //toggleHighlightVisibility(this.checked);
+            //saveHighlightVisibility(this.checked);
         });
 
         var toggleLabel = document.createElement('label');
@@ -151,15 +440,15 @@
         toggleLabel.style.marginLeft = '5px';
         toggleLabel.style.userSelect = 'none';
 
-        toggleDiv.appendChild(toggleSwitch);
-        toggleDiv.appendChild(toggleLabel);
+        //toggleDiv.appendChild(toggleSwitch);
+        //toggleDiv.appendChild(toggleLabel);
 
         var toggleScanSwitch = document.createElement('input');
         toggleScanSwitch.setAttribute('type', 'checkbox');
         toggleScanSwitch.style.cssText = toggleSwitchCSS;
         toggleScanSwitch.addEventListener('change', function() {
-            toggleScanVisibility(this.checked);
-            saveScanVisibility(this.checked);
+            //toggleScanVisibility(this.checked);
+            //saveScanVisibility(this.checked);
         });
 
         var toggleScanLabel = document.createElement('label');
@@ -246,12 +535,29 @@
 
         document.body.prepend(greenBar);
 
-        var highlightVisibility = getHighlightVisibility();
+        var highlightVisibility = getToggleStatus("toggleHighlight");
         toggleSwitch.checked = highlightVisibility;
         toggleHighlightVisibility(highlightVisibility);
 
-        var scanVisibility = getScanVisibility();
+        var scanVisibility = getToggleStatus("toggleScan");
         toggleScanSwitch.checked = scanVisibility;
+    }
+
+    async function settingsClickEvent(ItemUID, value){
+        switch (ItemUID){
+            case "toggleHighlight":
+                toggleHighlightVisibility(value);
+                break;
+            case "togglefooter":
+                toggleFooter(value);
+                console.log("Footer");
+                break;
+        }
+    }
+
+    function toggleFooter(value){
+        const footer = document.getElementById('navFooter');
+        footer.hidden = value;
     }
 
     function checkScanPageInput(value) {
@@ -274,6 +580,18 @@
         }
     }
 
+    // Funktion zum Abfragen des Toggle Status
+    function saveToggleStatus(ItemUID, value){
+        localStorage.setItem(ItemUID, value);
+    }
+
+    function getToggleStatus(ItemUID){
+        const toggleStatus = localStorage.getItem(ItemUID);
+        return toggleStatus === 'true';
+    }
+
+    //##################################### OLD CODE #####################################
+    // Funktion??
     function toggleScanVisibility(checked) {
         //var highlightedDivs = document.getElementsByClassName('highlighted');
 
@@ -283,26 +601,22 @@
         //}
     }
 
-    // Funktion zum Speichern der Auswahl des Schalters
-    function saveHighlightVisibility(checked) {
-        localStorage.setItem('highlightVisibility', checked);
-    }
+    // Funktion zum Abrufen der Auswahl des Schalters
+    //function getHighlightVisibility() {
+    //    var highlightVisibility = localStorage.getItem('highlightVisibility');
+    //    return highlightVisibility === 'true'; // Konvertiere den Wert in einen booleschen Wert
+    //}
+
+    //function saveScanVisibility(checked) {
+    //    localStorage.setItem('scanVisibility', checked);
+    //}
 
     // Funktion zum Abrufen der Auswahl des Schalters
-    function getHighlightVisibility() {
-        var highlightVisibility = localStorage.getItem('highlightVisibility');
-        return highlightVisibility === 'true'; // Konvertiere den Wert in einen booleschen Wert
-    }
-
-    function saveScanVisibility(checked) {
-        localStorage.setItem('scanVisibility', checked);
-    }
-
-    // Funktion zum Abrufen der Auswahl des Schalters
-    function getScanVisibility() {
-        var scanVisibility = localStorage.getItem('scanVisibility');
-        return scanVisibility === 'true'; // Konvertiere den Wert in einen booleschen Wert
-    }
+    //function getScanVisibility() {
+    //    var scanVisibility = localStorage.getItem('scanVisibility');
+    //    return scanVisibility === 'true'; // Konvertiere den Wert in einen booleschen Wert
+    //}
+    //####################################################################################
 
     // Funktion zum Löschen der gespeicherten Daten
     function clearCachedData() {
@@ -968,13 +1282,14 @@
         var rand;
         saveCurrentPage();
         saveMaxPage();
+        await createUI();
         await createGreenBar();
         //highlightAllProducts();
         await highlightCachedProducts();
         checkForAutoScan();
-        var highlightVisibility = getHighlightVisibility();
+        var highlightVisibility = getToggleStatus("toggleHighlight");
         toggleHighlightVisibility(highlightVisibility);
-        if(getScanVisibility()){
+        if(getToggleStatus("toggleScan")){
             scanAndCacheVisibleProducts();
         }else{
             scanAndCacheAllProducts();
