@@ -1,22 +1,25 @@
 // ==UserScript==
 // @name         Amazon Vine viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      0.9.1
 // @description  Hervorheben von bereits vorhandenen Produkten bei Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
 // @match        *://amazon.de/vine/*
+// @match        *://www.amazon.de/-/en/vine/*
 // @grant        none
+// @license      MIT
 // ==/UserScript==
 
 (function() {
     var debug = false;
-    var redirectMinTime = 2;
-    var redirectMaxTime = 5;
+    var redirectMinTime = 5;
+    var redirectMaxTime = 30;
     var url;
+    var allData;
     let redirectTimeout;
-    'use strict';
 
+    'use strict';
     // CSS für die grüne Leiste
     var greenBarCSS = `
   /* position: fixed; */
@@ -46,8 +49,30 @@
 
 `;
 
+    // CSS für den Schalter
+    var ScanPageInputCSS = `
+    height: 100% !important;
+    width: 60px !important;
+    vertical-align: middle !important;
+    position: static !important;
+    bottom: 0 !important;
+    margin-left: 10px;
+
+`;
+
     // CSS für den Button zum Löschen der Daten
     var deleteButtonCSS = `
+    height: 20px;
+    line-height: 20px;
+    padding: 0 10px;
+    background-color: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    `;
+
+    // CSS für den Button zum Löschen der Daten
+    var updateButtonCSS = `
     height: 20px;
     line-height: 20px;
     padding: 0 10px;
@@ -97,10 +122,16 @@
         console.log("Fehler beim Öffnen der Datenbank");
     };
 
+    request.onsuccess = function(event) {
+        console.log("Verbindung zur Datenbank hergestellt");
+        main();
+    };
+
     // Falls neue Version von Datenbank vorhanden
     request.onupgradeneeded = function(event) {
         const db = event.target.result;
         const objectStore = db.createObjectStore(objectStoreName, { keyPath: "ID" });
+        console.log("Problem mit der Datenbank");
     };
 
 
@@ -147,13 +178,38 @@
         toggleDiv.appendChild(toggleScanSwitch);
         toggleDiv.appendChild(toggleScanLabel);
 
-        var scanButton = document.createElement('button');
-        scanButton.textContent = 'Alles Scannen';
-        scanButton.style.marginLeft = '10px';
-        scanButton.addEventListener('click', function() {
-            AutoScanStart();
+        var ScanPageInput = document.createElement('input');
+        if(localStorage.getItem('scanToPage') != undefined){
+            var scanToPage = localStorage.getItem('scanToPage');
+        }else{
+            scanToPage = getMaxPage();
+        }
+        if(localStorage.getItem("autoScan")=="true"){
+            ScanPageInput.setAttribute('disabled' , 'true');
+        }
+        ScanPageInput.setAttribute('type', 'number');
+        ScanPageInput.setAttribute('maxlength', '3');
+        ScanPageInput.style.cssText = ScanPageInputCSS;
+        ScanPageInput.value = scanToPage;
+        ScanPageInput.addEventListener('change', function() {
+            console.log("Input");
+            var valid = checkScanPageInput(this.value);
+            if(!valid){
+                this.value = getMaxPage();
+            }
         });
 
+        var scanButton = document.createElement('button');
+        var buttonText = "Start Scan";
+        if(localStorage.getItem("autoScan")=="true"){
+            buttonText = "Stop Scan";
+        }
+        scanButton.textContent = buttonText;
+        scanButton.style.marginLeft = '10px';
+        scanButton.addEventListener('click', function() {
+            AutoScanStart(ScanPageInput.value);
+        });
+        toggleDiv.appendChild(ScanPageInput);
         toggleDiv.appendChild(scanButton);
 
         var titleDiv = document.createElement('div');
@@ -170,15 +226,25 @@
         buttonDiv.style.display = 'flex';
         buttonDiv.style.alignItems = 'center';
 
+        var versionButton = document.createElement('a');
+        versionButton.textContent = 'Version: ' + GM_info?.script?.version + ' update?';
+        versionButton.style.cssText = updateButtonCSS;
+        versionButton.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
+        versionButton.target = '_blank';
+
+
         var deleteButton = document.createElement('button');
-        //var ids = getCachedProductIDs();
-        var cachedProductsCount = await getProductCacheLength();
+        var cachedProductsCount = allData.length;
         deleteButton.textContent = cachedProductsCount + ' Daten löschen';
         deleteButton.style.cssText = deleteButtonCSS;
         deleteButton.addEventListener('click', function() {
-            clearCachedData();
+            var confirmation = confirm('Möchten Sie wirklich alle Daten löschen?');
+            if (confirmation) {
+                clearCachedData();
+            }
         });
 
+        buttonDiv.appendChild(versionButton);
         buttonDiv.appendChild(deleteButton);
 
         greenBar.appendChild(toggleDiv);
@@ -193,6 +259,16 @@
 
         var scanVisibility = getScanVisibility();
         toggleScanSwitch.checked = scanVisibility;
+    }
+
+    function checkScanPageInput(value) {
+        var maxPage = getMaxPage();
+        if(value > maxPage){
+            console.log("Eingabe fehlerhaft");
+            return false;
+        }
+        return true;
+        console.log("Eingabe: " + value);
     }
 
     // Funktion zum Ein- oder Ausblenden der hervorgehobenen Divs
@@ -272,16 +348,18 @@
     async function highlightCachedProducts() {
         var productTiles = document.getElementsByClassName('vvp-item-tile');
         var cachedProductIDs = await getCachedProductIDs();
-
         for (var i = 0; i < productTiles.length; i++) {
             var productTile = productTiles[i];
             var productID = getProductID(productTile);
-            if(await checkForIDInDatabase(productID)){
+            //if(await checkForIDInDatabase(productID)){
+            if(cachedProductIDs.includes(productID)){
+                const productInfo = allData.find(data => data.ID === productID);
                 //if (cachedProductIDs.includes(productID)) {
                 productTile.classList.add('highlighted');
                 productTile.style.backgroundColor = 'lightgreen';
 
-                var date = await getSavedDate(productID);
+                var date = productInfo.Datum;
+                //var date = await getSavedDate(productID);
                 addDateElement(productTile, date);
             }
         }
@@ -332,23 +410,25 @@
 
 
 
-    function AutoScanStart() {
+    function AutoScanStart(scanToPage) {
         if(debug == true){console.log("Cur: " + getCurrentPage())};
         if(debug == true){console.log("Max: " + getMaxPage())};
 
         var currentPage = getCurrentPage();
-
         if(localStorage.getItem("autoScan")=="false"){
             localStorage.setItem("autoScan", "true");
             localStorage.setItem("potLuck", "false");
             localStorage.setItem("lastChance", "false");
             localStorage.setItem("startByPageOne", "false");
             localStorage.setItem("firstRedirect", "true");
+            localStorage.setItem('scanToPage', scanToPage);
             checkForAutoScan();
         }else{
             clearTimeout(redirectTimeout);
             localStorage.setItem("autoScan", "false");
             console.log("Auto Scan abgebrochen");
+            url = "";
+            redirectTimeout = setTimeout(redirectNextPage, 100, url);
         }
     }
 
@@ -357,9 +437,10 @@
             var rand = random(redirectMinTime * 1000, redirectMaxTime * 1000);
             console.log("AutoScan aktiv!");
             var currentPage = getCurrentPage();
-            var maxPage = getMaxPage();
+            //var maxPage = getMaxPage();
+            var maxPage = localStorage.getItem("scanToPage")
             var nextPage = getCurrentPage() + 1;
-
+            //var scanToPage = localStorage.getItem("scanToPage");
             //Alle Produkte auf der aktuellen Seite speichern
             if(localStorage.getItem("firstRedirect")=="false") {
                 scanAndCacheAllProducts();
@@ -391,6 +472,9 @@
                 if(currentPage >= maxPage) {
                     console.log("Auto Scan Abgeschlossen!");
                     localStorage.setItem("autoScan", "false");
+                    localStorage.removeItem('scanToPage');
+                    url = "";
+                    redirectTimeout = setTimeout(redirectNextPage, 1000, url);
                     return
                 }else{
                     localStorage.setItem("firstRedirect", "false");
@@ -446,7 +530,7 @@
             var currentPageElement = pagination.querySelector('.a-selected a');
             var currentPage = parseInt(currentPageElement.textContent.trim());
             localStorage.setItem("currentPage", currentPage);
-            if(debug == true){console.log('Current Page Saved:', currentPage);}
+            if(debug){console.log('Current Page Saved:', currentPage);}
         }
     }
 
@@ -604,7 +688,6 @@
             };
 
             request.onsuccess = function(event) {
-                console.log("Datenabruf erfolgreich");
                 const db = event.target.result;
 
                 const transaction = db.transaction([objectStoreName], "readonly");
@@ -776,9 +859,8 @@
         productListContainer.style.height = 'calc(100% - 60px)';
 
         // Anzeigen der gespeicherten Daten aus dem Cache
-        var cachedProductIDs = getCachedProductIDs();
+        var cachedProductIDs = await getCachedProductIDs();
         var productCacheLength = await getProductCacheLength();
-        var allData = await getAllDataFromDatabase();
         //cachedProductIDs.forEach(function(productID) {
         for (var x = 0 ; x <= (productCacheLength - 1); x++) {
             var productID = cachedProductIDs[x];
@@ -888,28 +970,52 @@
 
     // Hauptfunktion
     async function main() {
-        var debug;
+        if(debug){console.log("[INi] - Amazon Vine Viewer")};
         var nextPage;
         var currentPage;
         var maxPage;
         var rand;
+        await saveCurrentPage();
+        if(debug){console.log("[INi] - Aktuelle Seite gespeichert")};
+        await saveMaxPage();
+        if(debug){console.log("[INi] - Maximale Seite gespeichert")};
+        try{
+            allData = await getAllDataFromDatabase();
+        } catch (error) {
+            console.log("Fehler beim abrufen der Datenbank");
+        }
+        if(debug){console.log("[INi] - Alle Daten abgefragt")};
         await createGreenBar();
-        saveCurrentPage();
-        saveMaxPage();
+        if(debug){console.log("[INi] - Tool Bar Initialisiert")};
         //highlightAllProducts();
         await highlightCachedProducts();
-        checkForAutoScan();
+        if(debug){console.log("[INi] - Cached Produkte hervorgehoben")};
+        await checkForAutoScan();
+        if(debug){console.log("[INi] - Auto Scan überprüft")};
         var highlightVisibility = getHighlightVisibility();
-        toggleHighlightVisibility(highlightVisibility);
-        if(getScanVisibility()){
-            scanAndCacheVisibleProducts();
+        if(debug){console.log("[INi] - Status Sichtbarkeit abgefragt")};
+        await toggleHighlightVisibility(highlightVisibility);
+        if(debug){console.log("[INi] - Sichtbarkeit an / aus")};
+        if(localStorage.getItem("autoScan") == "false"){
+            if(await getScanVisibility()){
+                await scanAndCacheVisibleProducts();
+            }else{
+                await scanAndCacheAllProducts();
+            }
         }else{
-            scanAndCacheAllProducts();
+            if(debug){console.log("Auto Scan aktiv, Überspringen des automatischen Scans")};
         }
-        window.addEventListener('scroll', scanAndCacheVisibleProducts);
+        if(debug){console.log("[INi] - Speichern aller Sichtbaren / nicht Sichtbaren Produkte")};
         await openPopup();
+        if(debug){console.log("[INi] - Popup Initialisiert")};
+        window.addEventListener('scroll', function(event){
+            if(localStorage.getItem("autoScan") == "false"){
+                scanAndCacheVisibleProducts();
+            }
+        });
         //getCachedProductIDs();
         window.addEventListener('keydown', function(event) {
+            console.log("Key Event");
             const key = event.key; // "ArrowRight", "ArrowLeft", "ArrowUp", or "ArrowDown"
             switch (event.key) {
                 case "ArrowLeft":
@@ -946,6 +1052,6 @@
         //window.addEventListener("DOMContentLoaded", AutoScan());
     }
 
-    main();
+    //main();
 
 })();
