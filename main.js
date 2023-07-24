@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Amazon Vine viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      0.9.1
 // @description  Hervorheben von bereits vorhandenen Produkten bei Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
 // @match        *://amazon.de/vine/*
 // @grant        none
+// @license      MIT
 // ==/UserScript==
 
 (function() {
@@ -46,8 +47,30 @@
 
 `;
 
+    // CSS für den Schalter
+    var ScanPageInputCSS = `
+    height: 100% !important;
+    width: 60px !important;
+    vertical-align: middle !important;
+    position: static !important;
+    bottom: 0 !important;
+    margin-left: 10px;
+
+`;
+
     // CSS für den Button zum Löschen der Daten
     var deleteButtonCSS = `
+    height: 20px;
+    line-height: 20px;
+    padding: 0 10px;
+    background-color: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    `;
+
+    // CSS für den Button zum Löschen der Daten
+    var updateButtonCSS = `
     height: 20px;
     line-height: 20px;
     padding: 0 10px;
@@ -147,13 +170,38 @@
         toggleDiv.appendChild(toggleScanSwitch);
         toggleDiv.appendChild(toggleScanLabel);
 
-        var scanButton = document.createElement('button');
-        scanButton.textContent = 'Alles Scannen';
-        scanButton.style.marginLeft = '10px';
-        scanButton.addEventListener('click', function() {
-            AutoScanStart();
+        var ScanPageInput = document.createElement('input');
+        if(localStorage.getItem('scanToPage') != undefined){
+            var scanToPage = localStorage.getItem('scanToPage');
+        }else{
+            scanToPage = getMaxPage();
+        }
+        if(localStorage.getItem("autoScan")=="true"){
+            ScanPageInput.setAttribute('disabled' , 'true');
+        }
+        ScanPageInput.setAttribute('type', 'number');
+        ScanPageInput.setAttribute('maxlength', '3');
+        ScanPageInput.style.cssText = ScanPageInputCSS;
+        ScanPageInput.value = scanToPage;
+        ScanPageInput.addEventListener('change', function() {
+            console.log("Input");
+            var valid = checkScanPageInput(this.value);
+            if(!valid){
+                this.value = getMaxPage();
+            }
         });
 
+        var scanButton = document.createElement('button');
+        var buttonText = "Start Scan";
+        if(localStorage.getItem("autoScan")=="true"){
+            buttonText = "Stop Scan";
+        }
+        scanButton.textContent = buttonText;
+        scanButton.style.marginLeft = '10px';
+        scanButton.addEventListener('click', function() {
+            AutoScanStart(ScanPageInput.value);
+        });
+        toggleDiv.appendChild(ScanPageInput);
         toggleDiv.appendChild(scanButton);
 
         var titleDiv = document.createElement('div');
@@ -170,15 +218,26 @@
         buttonDiv.style.display = 'flex';
         buttonDiv.style.alignItems = 'center';
 
+        var versionButton = document.createElement('a');
+        versionButton.textContent = 'Version: ' + GM_info?.script?.version + ' update?';
+        versionButton.style.cssText = updateButtonCSS;
+        versionButton.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
+        versionButton.target = '_blank';
+
+
         var deleteButton = document.createElement('button');
         //var ids = getCachedProductIDs();
         var cachedProductsCount = await getProductCacheLength();
         deleteButton.textContent = cachedProductsCount + ' Daten löschen';
         deleteButton.style.cssText = deleteButtonCSS;
         deleteButton.addEventListener('click', function() {
-            clearCachedData();
+            var confirmation = confirm('Möchten Sie wirklich alle Daten löschen?');
+            if (confirmation) {
+                clearCachedData();
+            }
         });
 
+        buttonDiv.appendChild(versionButton);
         buttonDiv.appendChild(deleteButton);
 
         greenBar.appendChild(toggleDiv);
@@ -193,6 +252,16 @@
 
         var scanVisibility = getScanVisibility();
         toggleScanSwitch.checked = scanVisibility;
+    }
+
+    function checkScanPageInput(value) {
+        var maxPage = getMaxPage();
+        if(value > maxPage){
+            console.log("Eingabe fehlerhaft");
+            return false;
+        }
+        return true;
+        console.log("Eingabe: " + value);
     }
 
     // Funktion zum Ein- oder Ausblenden der hervorgehobenen Divs
@@ -332,18 +401,18 @@
 
 
 
-    function AutoScanStart() {
+    function AutoScanStart(scanToPage) {
         if(debug == true){console.log("Cur: " + getCurrentPage())};
         if(debug == true){console.log("Max: " + getMaxPage())};
 
         var currentPage = getCurrentPage();
-
         if(localStorage.getItem("autoScan")=="false"){
             localStorage.setItem("autoScan", "true");
             localStorage.setItem("potLuck", "false");
             localStorage.setItem("lastChance", "false");
             localStorage.setItem("startByPageOne", "false");
             localStorage.setItem("firstRedirect", "true");
+            localStorage.setItem('scanToPage', scanToPage);
             checkForAutoScan();
         }else{
             clearTimeout(redirectTimeout);
@@ -357,9 +426,10 @@
             var rand = random(redirectMinTime * 1000, redirectMaxTime * 1000);
             console.log("AutoScan aktiv!");
             var currentPage = getCurrentPage();
-            var maxPage = getMaxPage();
+            //var maxPage = getMaxPage();
+            var maxPage = localStorage.getItem("scanToPage")
             var nextPage = getCurrentPage() + 1;
-
+            //var scanToPage = localStorage.getItem("scanToPage");
             //Alle Produkte auf der aktuellen Seite speichern
             if(localStorage.getItem("firstRedirect")=="false") {
                 scanAndCacheAllProducts();
@@ -391,6 +461,9 @@
                 if(currentPage >= maxPage) {
                     console.log("Auto Scan Abgeschlossen!");
                     localStorage.setItem("autoScan", "false");
+                    localStorage.removeItem('scanToPage');
+                    url = "";
+                    redirectTimeout = setTimeout(redirectNextPage, rand, url);
                     return
                 }else{
                     localStorage.setItem("firstRedirect", "false");
@@ -893,9 +966,9 @@
         var currentPage;
         var maxPage;
         var rand;
-        await createGreenBar();
         saveCurrentPage();
         saveMaxPage();
+        await createGreenBar();
         //highlightAllProducts();
         await highlightCachedProducts();
         checkForAutoScan();
