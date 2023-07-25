@@ -17,6 +17,7 @@
     var url;
     let redirectTimeout;
     var addDate;
+    var openList = false;
     //Menü Elements
     const id = [
         //[ID,Label]
@@ -30,7 +31,7 @@
     'use strict';
 
     // CSS UI Button
-    var uiButtonCSS = `
+    var uiSettingCSS = `
     position: fixed;
     left: 10px;
     bottom: 10px;
@@ -48,6 +49,24 @@
     transition: opacity 0.2s;
     `;
 
+    var uiListCSS = `
+    position: fixed;
+    left: 10px;
+    bottom: 50px;
+    z-index: 9999;
+    width: 30px;
+    height: 30px;
+    background-color: #232f3e;
+    border: black 2px solid;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    opacity: 1;
+    transition: bottom 0.2s;
+    `
+
     var uiButtonContentCSS = `
     font-size: 1.75vh;
     `
@@ -61,9 +80,9 @@
     height: 30px;
     z-index: 9999;
     border: black 2px solid;
-    border-radius: 5px;
+    border-radius: 10px;
     background-color: #232f3e;
-    transition: width 0.5s, height 0.5s;
+    transition: width 0.2s, height 0.2s;
     color: white;
     `
 
@@ -71,7 +90,7 @@
     width: 100%;
     height: 100%;
     opacity: 0;
-    transition: opacity 0.5s;
+    transition: opacity 0.2s;
     `
 
     var settingPopupCloseButton = `
@@ -268,13 +287,14 @@
     async function createUI(){
         var uiIMGurl = "https://m.media-amazon.com/images/G/01/vine/website/vine_logo_title._CB1556578328_.png";
 
-        var addUIButton = document.createElement('div');
-        addUIButton.setAttribute('id', 'ui-button');
-        addUIButton.style.cssText = uiButtonCSS;
-        addUIButton.addEventListener('click', function() {
-            //addUIButton.style.display = "none";
+        var addSettingsUIButton = document.createElement('div');
+        addSettingsUIButton.setAttribute('id', 'ui-button');
+        addSettingsUIButton.style.cssText = uiSettingCSS;
+        addSettingsUIButton.addEventListener('click', function() {
+            //addSettingsUIButton.style.display = "none";
             var settingPopup = document.getElementById('ui-setting');
             var settingPopupContent = document.getElementById('ui-setting-content');
+            var uiList = document.getElementById('ui-list');
             setTimeout(() => {
                 settingPopupContent.style.opacity = "1";
             },200);
@@ -282,8 +302,9 @@
             settingPopup.style.display = "flex";
             settingPopup.style.width = "250px";
             settingPopup.style.height = "300px";
-            addUIButton.style.opacity = "0";
-            addUIButton.style.cursor = "default";
+            uiList.style.bottom = "320px";
+            addSettingsUIButton.style.opacity = "0";
+            addSettingsUIButton.style.cursor = "default";
 
         });
 
@@ -294,10 +315,29 @@
         addButtonContent.textContent = '⚙️';
         addButtonContent.style.cssText = uiButtonContentCSS;
 
-        //addUIButton.appendChild(addUIIMG);
-        addUIButton.appendChild(addButtonContent);
-        document.body.prepend(addUIButton);
+        //addSettingsUIButton.appendChild(addUIIMG);
+        addSettingsUIButton.appendChild(addButtonContent);
+        document.body.prepend(addSettingsUIButton);
         createsettingPopup();
+
+
+
+        var addListButton = document.createElement("div");
+        addListButton.setAttribute('id', 'ui-list');
+        addListButton.style.cssText = uiListCSS;
+
+        addListButton.addEventListener('click', function() {
+            console.log("List klick");
+            createPopup();
+
+        });
+
+        var addListButtonContent = document.createElement('span');
+        addListButtonContent.textContent = '📋';
+        addListButtonContent.style.cssText = uiButtonContentCSS;
+
+        addListButton.appendChild(addListButtonContent);
+        document.body.prepend(addListButton);
 
     }
 
@@ -318,10 +358,12 @@
         closeButtonContent.textContent = 'X';
         closeButtonContent.addEventListener('click', function() {
             // Close Setting Popup
-            var uiButton = document.getElementById('ui-button');
+            var uiList = document.getElementById('ui-list');
             settingPopupContent.style.opacity = "0";
             //settingPopup.style.display = "none";
             setTimeout(() => {
+                var uiButton = document.getElementById('ui-button');
+                uiList.style.bottom = "50px";
                 settingPopup.style.width = "30px";
                 settingPopup.style.height = "30px";
                 uiButton.style.opacity = "1";
@@ -1224,144 +1266,148 @@
 
     // Funktion zum Erstellen des Popups
     async function createPopup() {
-        var popup = document.createElement('div');
-        popup.setAttribute('id', 'vine-viewer-popup');
-        popup.style.position = 'fixed';
-        popup.style.top = '50%';
-        popup.style.left = '50%';
-        popup.style.transform = 'translate(-50%, -50%)';
-        popup.style.width = '75%';
-        popup.style.height = '75%';
-        popup.style.backgroundColor = 'white';
-        popup.style.boxShadow = '0px 0px 50px 10px rgba(0, 0, 0, 0.9)';
-        popup.style.border = '1px solid black';
-        popup.style.padding = '10px';
-        popup.style.zIndex = '999';
+        if(!openList){
+            openList = true;
+            var popup = document.createElement('div');
+            popup.setAttribute('id', 'vine-viewer-popup');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.width = '75%';
+            popup.style.height = '75%';
+            popup.style.backgroundColor = 'white';
+            popup.style.boxShadow = '0px 0px 50px 10px rgba(0, 0, 0, 0.9)';
+            popup.style.border = '1px solid black';
+            popup.style.padding = '10px';
+            popup.style.zIndex = '999';
+            popup.style.borderRadius = "15px";
 
-        var closeButton = document.createElement('div');
-        closeButton.textContent = 'X';
-        closeButton.style.position = 'absolute';
-        closeButton.style.top = '5px';
-        closeButton.style.right = '5px';
-        closeButton.style.cursor = 'pointer';
-        closeButton.addEventListener('click', function() {
-            document.body.removeChild(popup);
-        });
+            var closeButton = document.createElement('div');
+            closeButton.textContent = 'X';
+            closeButton.style.position = 'absolute';
+            closeButton.style.top = '5px';
+            closeButton.style.right = '10px';
+            closeButton.style.cursor = 'pointer';
+            closeButton.addEventListener('click', function() {
+                document.body.removeChild(popup);
+                openList = false;
+            });
 
-        popup.appendChild(closeButton);
+            popup.appendChild(closeButton);
 
-        var searchContainer = document.createElement('div');
-        searchContainer.style.height = '50px';
-        searchContainer.style.marginBottom = '10px';
+            var searchContainer = document.createElement('div');
+            searchContainer.style.height = '50px';
+            searchContainer.style.marginBottom = '10px';
 
-        var searchTitel = document.createElement('span');
-        searchTitel.style.height = '30px';
-        searchTitel.style.width = '50px';
-        searchTitel.style.padding = '5px';
-        searchTitel.style.fontWeight = 'bold';
-        searchTitel.textContent = 'Filter: ';
+            var searchTitel = document.createElement('span');
+            searchTitel.style.height = '30px';
+            searchTitel.style.width = '50px';
+            searchTitel.style.padding = '5px';
+            searchTitel.style.fontWeight = 'bold';
+            searchTitel.textContent = 'Filter: ';
 
-        searchContainer.appendChild(searchTitel);
+            searchContainer.appendChild(searchTitel);
 
-        var searchInput = document.createElement('input');
-        searchInput.setAttribute('type', 'text');
-        searchInput.style.height = '30px';
-        searchInput.style.width = '500px';
-        searchInput.style.padding = '5px';
-        searchInput.addEventListener('input', function(event) {
-            var searchQuery = event.target.value.toLowerCase();
-            var productContainers = popup.getElementsByClassName('product-container');
-            for (var i = 0; i < productContainers.length; i++) {
-                var productContainer = productContainers[i];
-                var titleElement = productContainer.querySelector('.product-title');
-                var title = titleElement.textContent.toLowerCase();
+            var searchInput = document.createElement('input');
+            searchInput.setAttribute('type', 'text');
+            searchInput.style.height = '30px';
+            searchInput.style.width = '500px';
+            searchInput.style.padding = '5px';
+            searchInput.addEventListener('input', function(event) {
+                var searchQuery = event.target.value.toLowerCase();
+                var productContainers = popup.getElementsByClassName('product-container');
+                for (var i = 0; i < productContainers.length; i++) {
+                    var productContainer = productContainers[i];
+                    var titleElement = productContainer.querySelector('.product-title');
+                    var title = titleElement.textContent.toLowerCase();
 
-                if (title.includes(searchQuery)) {
-                    productContainer.style.display = 'flex';
-                } else {
-                    productContainer.style.display = 'none';
+                    if (title.includes(searchQuery)) {
+                        productContainer.style.display = 'flex';
+                    } else {
+                        productContainer.style.display = 'none';
+                    }
                 }
+            });
+            searchContainer.appendChild(searchInput);
+            popup.appendChild(searchContainer);
+
+            var productListContainer = document.createElement('div');
+            productListContainer.style.overflow = 'auto';
+            productListContainer.style.height = 'calc(100% - 60px)';
+
+            // Anzeigen der gespeicherten Daten aus dem Cache
+            var cachedProductIDs = getCachedProductIDs();
+            var productCacheLength = await getProductCacheLength();
+            var allData = await getAllDataFromDatabase();
+            //cachedProductIDs.forEach(function(productID) {
+            for (var x = 0 ; x <= (productCacheLength - 1); x++) {
+                var productID = cachedProductIDs[x];
+                var title = allData[x].Titel;
+                var image = allData[x].BildURL;
+                var buttonContent = allData[x].Button;
+                var date = allData[x].Datum;
+                if(debug == true){console.log((x+1) + " - Titel: " + title)};
+                //var title = localStorage.getItem('title_' + productID);
+                //var image = localStorage.getItem('image_' + productID);
+                //var buttonContent = localStorage.getItem('button_' + productID);
+                //var date = formatDate(localStorage.getItem('date_' + productID));
+                //var date = formatDate(getSavedDate(productID));
+
+                if (title && image && buttonContent) {
+                    var productContainer = document.createElement('div');
+                    productContainer.classList.add('product-container');
+                    productContainer.style.display = 'flex';
+                    productContainer.style.alignItems = 'center';
+                    productContainer.style.marginBottom = '10px';
+                    productContainer.style.marginRight = '10px';
+
+                    var imageElement = document.createElement('img');
+                    imageElement.src = image;
+                    imageElement.style.width = '100px';
+                    imageElement.style.height = '100px';
+                    imageElement.style.objectFit = 'cover';
+                    imageElement.style.marginRight = '10px';
+
+                    var dateElement = document.createElement('div');
+                    //dateElement.textContent = date.replace(',', '\n');
+                    dateElement.textContent = date;
+                    dateElement.style.marginRight = '10px';
+
+                    var titleElement = document.createElement('span');
+                    titleElement.classList.add('product-title');
+                    titleElement.textContent = title;
+                    titleElement.style.flex = '1';
+
+                    var buttonContainer = document.createElement('span');
+                    buttonContainer.style.display = 'flex';
+                    buttonContainer.style.alignItems = 'center';
+                    buttonContainer.classList.add('a-button');
+                    buttonContainer.classList.add('a-button-primary');
+                    buttonContainer.classList.add('vvp-details-btn');
+
+                    var buttonSpan = document.createElement('span');
+                    buttonSpan.innerHTML = buttonContent;
+                    buttonSpan.style.width = '125px';
+                    buttonSpan.style.textAlign = 'right';
+                    buttonSpan.classList.add('a-button-inner');
+
+                    buttonContainer.appendChild(buttonSpan);
+
+                    productContainer.appendChild(imageElement);
+                    productContainer.appendChild(dateElement);
+                    productContainer.appendChild(titleElement);
+                    productContainer.appendChild(buttonContainer);
+                    productListContainer.insertBefore(productContainer, productListContainer.firstChild);
+                    //productListContainer.appendChild(productContainer);
+                }
+                //});
             }
-        });
-        searchContainer.appendChild(searchInput);
-        popup.appendChild(searchContainer);
 
-        var productListContainer = document.createElement('div');
-        productListContainer.style.overflow = 'auto';
-        productListContainer.style.height = 'calc(100% - 60px)';
-
-        // Anzeigen der gespeicherten Daten aus dem Cache
-        var cachedProductIDs = getCachedProductIDs();
-        var productCacheLength = await getProductCacheLength();
-        var allData = await getAllDataFromDatabase();
-        //cachedProductIDs.forEach(function(productID) {
-        for (var x = 0 ; x <= (productCacheLength - 1); x++) {
-            var productID = cachedProductIDs[x];
-            var title = allData[x].Titel;
-            var image = allData[x].BildURL;
-            var buttonContent = allData[x].Button;
-            var date = allData[x].Datum;
-            if(debug == true){console.log((x+1) + " - Titel: " + title)};
-            //var title = localStorage.getItem('title_' + productID);
-            //var image = localStorage.getItem('image_' + productID);
-            //var buttonContent = localStorage.getItem('button_' + productID);
-            //var date = formatDate(localStorage.getItem('date_' + productID));
-            //var date = formatDate(getSavedDate(productID));
-
-            if (title && image && buttonContent) {
-                var productContainer = document.createElement('div');
-                productContainer.classList.add('product-container');
-                productContainer.style.display = 'flex';
-                productContainer.style.alignItems = 'center';
-                productContainer.style.marginBottom = '10px';
-                productContainer.style.marginRight = '10px';
-
-                var imageElement = document.createElement('img');
-                imageElement.src = image;
-                imageElement.style.width = '100px';
-                imageElement.style.height = '100px';
-                imageElement.style.objectFit = 'cover';
-                imageElement.style.marginRight = '10px';
-
-                var dateElement = document.createElement('div');
-                //dateElement.textContent = date.replace(',', '\n');
-                dateElement.textContent = date;
-                dateElement.style.marginRight = '10px';
-
-                var titleElement = document.createElement('span');
-                titleElement.classList.add('product-title');
-                titleElement.textContent = title;
-                titleElement.style.flex = '1';
-
-                var buttonContainer = document.createElement('span');
-                buttonContainer.style.display = 'flex';
-                buttonContainer.style.alignItems = 'center';
-                buttonContainer.classList.add('a-button');
-                buttonContainer.classList.add('a-button-primary');
-                buttonContainer.classList.add('vvp-details-btn');
-
-                var buttonSpan = document.createElement('span');
-                buttonSpan.innerHTML = buttonContent;
-                buttonSpan.style.width = '125px';
-                buttonSpan.style.textAlign = 'right';
-                buttonSpan.classList.add('a-button-inner');
-
-                buttonContainer.appendChild(buttonSpan);
-
-                productContainer.appendChild(imageElement);
-                productContainer.appendChild(dateElement);
-                productContainer.appendChild(titleElement);
-                productContainer.appendChild(buttonContainer);
-                productListContainer.insertBefore(productContainer, productListContainer.firstChild);
-                //productListContainer.appendChild(productContainer);
-            }
-            //});
+            popup.appendChild(productListContainer);
+            document.body.appendChild(popup);
         }
-
-        popup.appendChild(productListContainer);
-        document.body.appendChild(popup);
     }
-
     // Funktion zum Filtern der Produkte basierend auf der Sucheingabe
     function filterProducts(searchText) {
         var productsContainer = document.getElementById('product-list');
@@ -1399,6 +1445,7 @@
 
         vineViewerText.textContent = '';
         vineViewerText.appendChild(link);
+
     }
 
     // Hauptfunktion
@@ -1412,7 +1459,7 @@
         saveCurrentPage();
         saveMaxPage();
         await createUI();
-        await createGreenBar();
+        //await createGreenBar();
         //highlightAllProducts();
         await highlightCachedProducts();
         checkForAutoScan();
@@ -1424,7 +1471,7 @@
             scanAndCacheAllProducts();
         }
         window.addEventListener('scroll', scanAndCacheVisibleProducts);
-        await openPopup();
+        //await openPopup();
         //getCachedProductIDs();
         window.addEventListener('keydown', function(event) {
             const key = event.key; // "ArrowRight", "ArrowLeft", "ArrowUp", or "ArrowDown"
