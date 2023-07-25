@@ -266,7 +266,6 @@
         for(var x = 0; x < id.length; x++){
             var ItemUID = id[x][0];
             var value = getToggleStatus(ItemUID);
-            console.log("Status " + ItemUID + ": " + value);
             switch (ItemUID) {
                 case "toggleScan":
                     break;
@@ -971,7 +970,6 @@
     }
 
     function scanAndCacheAllProducts() {
-        console.log("Alle produkte werden gescannt");
         var productTiles = document.getElementsByClassName('vvp-item-tile');
         var ProductIDs = [];
         var ProductTitles = [];
