@@ -99,7 +99,7 @@
 
     var settingPopupItemListCSS = `
     width: 100%;
-    height: calc(100% - 25px);
+    height: auto;
     `
 
     var settingPopupItemCSS = `
@@ -124,6 +124,15 @@
     align-items: center;
     `
 
+    var settingFooterCSS = `
+    width: 100%;
+    /* background-color: white; */
+    height: 25px;
+    position: absolute;
+    bottom: 0px;
+    justify-content: center;
+    display: flex;
+    `
     // CSS für die grüne Leiste
     var greenBarCSS = `
   /* position: fixed; */
@@ -315,10 +324,12 @@
             setTimeout(() => {
                 settingPopup.style.width = "30px";
                 settingPopup.style.height = "30px";
-            }, 200);
+                uiButton.style.opacity = "1";
+                uiButton.style.cursor = "pointer";
+            }, 150);
             //uiButton.style.display = "flex";
-            uiButton.style.opacity = "1";
-            uiButton.style.cursor = "pointer";
+
+            // ID ui-setting-content hide
 
         });
 
@@ -327,7 +338,7 @@
 
         var titleDivContent = document.createElement("span");
         titleDivContent.style.cssText = titleDivContentCSS;
-        titleDivContent.textContent = "Einstellungen"
+        titleDivContent.textContent = "VineViewer Einstellungen"
 
         var itemsDiv = document.createElement("div");
         itemsDiv.style.cssText = settingPopupItemListCSS
@@ -453,8 +464,38 @@
         //itemDiv.appendChild(itemRightDiv);
         //itemsDiv.appendChild(itemDiv);
 
+        var buttonDeleteDataDiv = document.createElement('div');
+        //buttonDeleteDiv.style.
+
+        var buttonDeleteData = document.createElement('button');
+        var cachedProductsCount = await getProductCacheLength();
+        buttonDeleteData.textContent = cachedProductsCount + ' Daten löschen';
+        buttonDeleteData.style.margin = "13px";
+        buttonDeleteData.addEventListener('click', function() {
+            var confirmation = confirm('Möchten Sie wirklich alle Daten löschen?');
+            if (confirmation) {
+                clearCachedData();
+            }
+        });
+
+        buttonDeleteDataDiv.appendChild(buttonDeleteData);
+        itemsDiv.appendChild(buttonDeleteDataDiv);
+
+        var settingFooter = document.createElement("div");
+        settingFooter.style.cssText = settingFooterCSS;
+
+        var footerVersionLink = document.createElement("a");
+        footerVersionLink.textContent = 'Version: ' + GM_info?.script?.version;
+        footerVersionLink.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
+        footerVersionLink.target = "_blank"
+        footerVersionLink.style.textDecoration = "none"
+        footerVersionLink.style.color = "inherit"
+
+        settingFooter.appendChild(footerVersionLink);
+
         settingPopupContent.appendChild(itemsDiv);
         settingPopupContent.appendChild(closeButton);
+        settingPopupContent.appendChild(settingFooter);
         settingPopup.appendChild(settingPopupContent);
         document.body.prepend(settingPopup);
     }
@@ -549,27 +590,27 @@
         buttonDiv.style.display = 'flex';
         buttonDiv.style.alignItems = 'center';
 
-        var versionButton = document.createElement('a');
-        versionButton.textContent = 'Version: ' + GM_info?.script?.version + ' update?';
-        versionButton.style.cssText = updateButtonCSS;
-        versionButton.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
-        versionButton.target = '_blank';
+        //var versionButton = document.createElement('a');
+        //versionButton.textContent = 'Version: ' + GM_info?.script?.version + ' update?';
+        //versionButton.style.cssText = updateButtonCSS;
+        //versionButton.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
+        //versionButton.target = '_blank';
 
 
-        var deleteButton = document.createElement('button');
-        //var ids = getCachedProductIDs();
-        var cachedProductsCount = await getProductCacheLength();
-        deleteButton.textContent = cachedProductsCount + ' Daten löschen';
-        deleteButton.style.cssText = deleteButtonCSS;
-        deleteButton.addEventListener('click', function() {
-            var confirmation = confirm('Möchten Sie wirklich alle Daten löschen?');
-            if (confirmation) {
-                clearCachedData();
-            }
-        });
+        //var deleteButton = document.createElement('button');
+        ////var ids = getCachedProductIDs();
+        //var cachedProductsCount = await getProductCacheLength();
+        //deleteButton.textContent = cachedProductsCount + ' Daten löschen';
+        //deleteButton.style.cssText = deleteButtonCSS;
+        //deleteButton.addEventListener('click', function() {
+        //    var confirmation = confirm('Möchten Sie wirklich alle Daten löschen?');
+        //    if (confirmation) {
+        //        clearCachedData();
+        //    }
+        //});
 
-        buttonDiv.appendChild(versionButton);
-        buttonDiv.appendChild(deleteButton);
+        //buttonDiv.appendChild(versionButton);
+        //buttonDiv.appendChild(deleteButton);
 
         greenBar.appendChild(toggleDiv);
         greenBar.appendChild(titleDiv);
@@ -1367,9 +1408,7 @@
         var currentPage;
         var maxPage;
         var rand;
-        await document.addEventListener('DOMContentLoaded', function() {
         loadSettings();
-        });
         saveCurrentPage();
         saveMaxPage();
         await createUI();
