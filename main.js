@@ -195,8 +195,10 @@
     // CSS für das hinzugefügte Datumselement
     var dateElementCSS = `
     justify-content: center;
-    height: auto;
+    height: 0px;
+    margin: 0;
     width: 90%;
+    display: flex;
     `;
 
     // CSS für das hinzugefügte Favorite Icon
@@ -608,7 +610,7 @@
         const dateElements = document.querySelectorAll('[id="p-date"]');
         dateElements.forEach(function(element){
             if(value){
-                element.style.display = "inline-flex";
+                element.style.display = "flex";
             }else{
                 element.style.display = "none";
             }
@@ -757,7 +759,7 @@
         dateElement.textContent = date;
         dateElement.style.cssText = dateElementCSS;
         if(await getToggleStatus("toggleDate")){
-            dateElement.style.display = "inline-flex";
+            dateElement.style.display = "flex";
         } else {
             dateElement.style.display = "none";
         }
