@@ -294,6 +294,7 @@
             var settingPopup = document.getElementById('ui-setting');
             var settingPopupContent = document.getElementById('ui-setting-content');
             var uiList = document.getElementById('ui-list');
+            settingPopupContent.hidden = false;
             setTimeout(() => {
                 settingPopupContent.style.opacity = "1";
             },200);
@@ -349,6 +350,7 @@
         var settingPopupContent = document.createElement('div');
         settingPopupContent.setAttribute('id', 'ui-setting-content');
         settingPopupContent.style.cssText = settingPopupContentCSS;
+        settingPopupContent.hidden = true;
 
         var closeButton = document.createElement('div');
         closeButton.style.cssText = settingPopupCloseButton;
@@ -367,6 +369,7 @@
                 settingPopup.style.height = "30px";
                 uiButton.style.opacity = "1";
                 uiButton.style.cursor = "pointer";
+                settingPopupContent.hidden = true;
             }, 150);
             //uiButton.style.display = "flex";
 
@@ -856,6 +859,7 @@
         var productTiles = document.getElementsByClassName('vvp-item-tile');
         var visibleProductIDs = [];
         var visibleProductTitles = [];
+        var visibleProductLinks = [];
         var visibleProductImages = [];
         var visibleProductButtons = [];
 
@@ -869,8 +873,10 @@
                 var contentContainer = productTile.querySelector('.vvp-item-tile-content');
                 var imageElement = contentContainer.querySelector('img');
                 var nameElement = contentContainer.querySelector('a span span.a-truncate-full');
+                var linkElement = contentContainer.querySelector('a');
 
                 visibleProductTitles.push(nameElement.textContent);
+                visibleProductLinks.push(linkElement.href);
                 visibleProductImages.push(imageElement.getAttribute('src'));
 
                 var buttonContainer = productTile.querySelector('span.a-button-inner');
@@ -879,8 +885,7 @@
                 visibleProductButtons.push(buttonContent);
             }
         }
-
-        cacheProducts(visibleProductIDs, visibleProductTitles, visibleProductImages, visibleProductButtons);
+        cacheProducts(visibleProductIDs, visibleProductTitles, visibleProductLinks, visibleProductImages, visibleProductButtons);
     }
 
 
@@ -973,6 +978,7 @@
         var productTiles = document.getElementsByClassName('vvp-item-tile');
         var ProductIDs = [];
         var ProductTitles = [];
+        var ProductLinks = [];
         var ProductImages = [];
         var ProductButtons = [];
         for (var i = 0; i < productTiles.length; i++) {
@@ -984,8 +990,10 @@
             var contentContainer = productTile.querySelector('.vvp-item-tile-content');
             var imageElement = contentContainer.querySelector('img');
             var nameElement = contentContainer.querySelector('a span span.a-truncate-full');
+            var linkElement = contentContainer.querySelector('a');
 
             ProductTitles.push(nameElement.textContent);
+            ProductLinks.push(linkElement.href);
             ProductImages.push(imageElement.getAttribute('src'));
 
             var buttonContainer = productTile.querySelector('span.a-button-inner');
@@ -993,7 +1001,7 @@
 
             ProductButtons.push(buttonContent);
         }
-        cacheProducts(ProductIDs, ProductTitles, ProductImages, ProductButtons);
+        cacheProducts(ProductIDs, ProductTitles, ProductLinks,ProductImages, ProductButtons);
     }
 
     function saveCurrentPage() {
@@ -1041,7 +1049,7 @@
 
 
     // Funktion zum Speichern der Produkt-IDs im Cache
-    async function cacheProducts(productIDs, titles, images, buttons) {
+    async function cacheProducts(productIDs, titles, links, images, buttons) {
         var cachedProductIDs = await getCachedProductIDs();
         var productCacheLength = await getProductCacheLength();
         if(debug == true){console.log("Cache: " + productCacheLength)};
@@ -1086,6 +1094,7 @@
                     const data = {
                         ID: productID,
                         Titel: titles[index],
+                        Link: links[index],
                         BildURL: images[index],
                         Button: buttons[index],
                         Datum: currentDate,
@@ -1339,9 +1348,18 @@
             var productCacheLength = await getProductCacheLength();
             var allData = await getAllDataFromDatabase();
             //cachedProductIDs.forEach(function(productID) {
-            for (var x = 0 ; x <= (productCacheLength - 1); x++) {
+            // List Start
+            var x = 0;
+            //List End
+            var y = productCacheLength;
+            if(productCacheLength<=100){
+                y = productCacheLength;
+            }
+            //productCacheLength
+            for (x = 0 ; x <= (y - 1); x++) {
                 var productID = cachedProductIDs[x];
                 var title = allData[x].Titel;
+                var link = allData[x].Link;
                 var image = allData[x].BildURL;
                 var buttonContent = allData[x].Button;
                 var date = allData[x].Datum;
@@ -1371,10 +1389,15 @@
                     //dateElement.textContent = date.replace(',', '\n');
                     dateElement.textContent = date;
                     dateElement.style.marginRight = '10px';
+                    dateElement.style.width = '100px';
+                    dateElement.style.textAlign = 'center';
 
-                    var titleElement = document.createElement('span');
+
+                    var titleElement = document.createElement('a');
                     titleElement.classList.add('product-title');
                     titleElement.textContent = title;
+                    titleElement.href = link;
+                    titleElement.target = "_blank";
                     titleElement.style.flex = '1';
 
                     var buttonContainer = document.createElement('span');
