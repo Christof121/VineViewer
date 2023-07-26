@@ -18,6 +18,7 @@
     let redirectTimeout;
     var addDate;
     var openList = false;
+    var popupDefaultCount = 10;
     //Menü Elements
     const id = [
         //[ID,Label]
@@ -1274,6 +1275,22 @@
     // Funktion zum Erstellen des Popups
     async function createPopup() {
         if(!openList){
+            // Anzeigen der gespeicherten Daten aus dem Cache
+            var cachedProductIDs = getCachedProductIDs();
+            var productCacheLength = await getProductCacheLength();
+            var allData = await getAllDataFromDatabase();
+            //Start Bereich angeben // Start bei 0
+            var startCount = 52;
+            //List End
+            //productCacheLength
+            var stopCount = (startCount + popupDefaultCount);
+            if(stopCount > productCacheLength){
+                console.log("Y: " + stopCount)
+                stopCount = productCacheLength;
+                console.log("Y: " + stopCount)
+            }
+            // popupDefaultCount -> Anzahl die Pro anzeigen angezeigt werden soll
+
             openList = true;
             var popup = document.createElement('div');
             popup.setAttribute('id', 'vine-viewer-popup');
@@ -1304,8 +1321,7 @@
             popup.appendChild(closeButton);
 
             var searchContainer = document.createElement('div');
-            searchContainer.style.height = '50px';
-            searchContainer.style.marginBottom = '10px';
+            searchContainer.style.height = '35px';
 
             var searchTitel = document.createElement('span');
             searchTitel.style.height = '30px';
@@ -1339,31 +1355,31 @@
             searchContainer.appendChild(searchInput);
             popup.appendChild(searchContainer);
 
+            var productCountContainer = document.createElement('div');
+            productCountContainer.style.marginBottom = "5px";
+            productCountContainer.style.paddingLeft = "5px";
+
+            var productCount = document.createElement('span');
+            productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+            productCountContainer.appendChild(productCount);
+            popup.appendChild(productCountContainer);
+
             var productListContainer = document.createElement('div');
             productListContainer.style.overflow = 'auto';
-            productListContainer.style.height = 'calc(100% - 60px)';
+            productListContainer.style.height = 'calc(100% - 80px)';
+            productListContainer.style.padding = "5px";
 
-            // Anzeigen der gespeicherten Daten aus dem Cache
-            var cachedProductIDs = getCachedProductIDs();
-            var productCacheLength = await getProductCacheLength();
-            var allData = await getAllDataFromDatabase();
             //cachedProductIDs.forEach(function(productID) {
             // List Start
-            var x = 0;
-            //List End
-            var y = productCacheLength;
-            if(productCacheLength<=100){
-                y = productCacheLength;
-            }
             //productCacheLength
-            for (x = 0 ; x <= (y - 1); x++) {
-                var productID = cachedProductIDs[x];
-                var title = allData[x].Titel;
-                var link = allData[x].Link;
-                var image = allData[x].BildURL;
-                var buttonContent = allData[x].Button;
-                var date = allData[x].Datum;
-                if(debug == true){console.log((x+1) + " - Titel: " + title)};
+            for (startCount; startCount <= (stopCount - 1); startCount++) {
+                var productID = cachedProductIDs[startCount];
+                var title = allData[startCount].Titel;
+                var link = allData[startCount].Link;
+                var image = allData[startCount].BildURL;
+                var buttonContent = allData[startCount].Button;
+                var date = allData[startCount].Datum;
+                if(debug == true){console.log((startCount+1) + " - Titel: " + title)};
                 //var title = localStorage.getItem('title_' + productID);
                 //var image = localStorage.getItem('image_' + productID);
                 //var buttonContent = localStorage.getItem('button_' + productID);
