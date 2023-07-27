@@ -18,10 +18,11 @@
     let redirectTimeout;
     var addDate;
     var openList = false;
-    var popupDefaultCount = 10;
+    var popupDefaultCount = 100;
     //Menü Elements
     const id = [
         //[ID,Label]
+        ["popupDefaultCount","Produkte Pro Seite","select"],
         ["colorHighlight","Highlight Farbe","color"],
         ["toggleHighlight","Ausblenden","checkbox"],
         ["toggleScan","Nur Sichtbares Cachen","checkbox"],
@@ -587,39 +588,39 @@
         //        toggleDiv.appendChild(toggleScanSwitch);
         //        toggleDiv.appendChild(toggleScanLabel);
         //
-        //        var ScanPageInput = document.createElement('input');
-        //        if(localStorage.getItem('scanToPage') != undefined){
-        //            var scanToPage = localStorage.getItem('scanToPage');
-        //        }else{
-        //            scanToPage = getMaxPage();
-        //        }
-        //        if(localStorage.getItem("autoScan")=="true"){
-        //            ScanPageInput.setAttribute('disabled' , 'true');
-        //        }
-        //        ScanPageInput.setAttribute('type', 'number');
-        //        ScanPageInput.setAttribute('maxlength', '3');
-        //        ScanPageInput.style.cssText = ScanPageInputCSS;
-        //        ScanPageInput.value = scanToPage;
-        //        ScanPageInput.addEventListener('change', function() {
-        //            console.log("Input");
-        //            var valid = checkScanPageInput(this.value);
-        //            if(!valid){
-        //                this.value = getMaxPage();
-        //            }
-        //        });
-        //
-        //        var scanButton = document.createElement('button');
-        //        var buttonText = "Start Scan";
-        //        if(localStorage.getItem("autoScan")=="true"){
-        //            buttonText = "Stop Scan";
-        //        }
-        //        scanButton.textContent = buttonText;
-        //        scanButton.style.marginLeft = '10px';
-        //        scanButton.addEventListener('click', function() {
-        //            AutoScanStart(ScanPageInput.value);
-        //        });
-        //        toggleDiv.appendChild(ScanPageInput);
-        //        toggleDiv.appendChild(scanButton);
+                var ScanPageInput = document.createElement('input');
+                if(localStorage.getItem('scanToPage') != undefined){
+                    var scanToPage = localStorage.getItem('scanToPage');
+                }else{
+                    scanToPage = getMaxPage();
+                }
+                if(localStorage.getItem("autoScan")=="true"){
+                    ScanPageInput.setAttribute('disabled' , 'true');
+                }
+                ScanPageInput.setAttribute('type', 'number');
+                ScanPageInput.setAttribute('maxlength', '3');
+                ScanPageInput.style.cssText = ScanPageInputCSS;
+                ScanPageInput.value = scanToPage;
+                ScanPageInput.addEventListener('change', function() {
+                    console.log("Input");
+                    var valid = checkScanPageInput(this.value);
+                    if(!valid){
+                        this.value = getMaxPage();
+                    }
+                });
+
+                var scanButton = document.createElement('button');
+                var buttonText = "Start Scan";
+                if(localStorage.getItem("autoScan")=="true"){
+                    buttonText = "Stop Scan";
+                }
+                scanButton.textContent = buttonText;
+                scanButton.style.marginLeft = '10px';
+                scanButton.addEventListener('click', function() {
+                    AutoScanStart(ScanPageInput.value);
+                });
+                toggleDiv.appendChild(ScanPageInput);
+                toggleDiv.appendChild(scanButton);
 
         var titleDiv = document.createElement('div');
         titleDiv.style.display = 'flex';
@@ -1280,15 +1281,21 @@
             var productCacheLength = await getProductCacheLength();
             var allData = await getAllDataFromDatabase();
             //Start Bereich angeben // Start bei 0
-            var startCount = 52;
+            var startCount = 0;
+            var popupPageCurrent = 1;
+            var popupPageMax;
             //List End
             //productCacheLength
             var stopCount = (startCount + popupDefaultCount);
-            if(stopCount > productCacheLength){
-                console.log("Y: " + stopCount)
+
+            if(stopCount >= productCacheLength){
                 stopCount = productCacheLength;
-                console.log("Y: " + stopCount)
             }
+
+            console.log(productCacheLength / popupDefaultCount);
+            popupPageMax = Math.ceil(productCacheLength / popupDefaultCount);
+            console.log("PageMax: " + popupPageMax);
+            console.log("PageCurrent: " + popupPageCurrent);
             // popupDefaultCount -> Anzahl die Pro anzeigen angezeigt werden soll
 
             openList = true;
@@ -1334,11 +1341,176 @@
 
             var searchInput = document.createElement('input');
             searchInput.setAttribute('type', 'text');
+            searchInput.setAttribute('id', 'popup-search-input');
             searchInput.style.height = '30px';
             searchInput.style.width = '500px';
             searchInput.style.padding = '5px';
             searchInput.addEventListener('input', function(event) {
                 var searchQuery = event.target.value.toLowerCase();
+                searchItems(searchQuery);
+            });
+            searchContainer.appendChild(searchInput);
+            popup.appendChild(searchContainer);
+
+            var productCountContainer = document.createElement('div');
+            productCountContainer.style.marginBottom = "5px";
+            productCountContainer.style.paddingLeft = "5px";
+
+            var productCount = document.createElement('span');
+            productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+
+            var productCountButtons = document.createElement('div');
+            productCountButtons.style.display = "flex";
+
+            var currentPage = document.createElement('div');
+            currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
+
+            var buttonBack = document.createElement('button');
+            buttonBack.disabled = true;
+            //buttonBack.setAttribute("id","popup-button-back");
+            buttonBack.textContent = "<";
+            buttonBack.addEventListener('click', function(event) {
+                removeItemList();
+                startCount = (startCount - popupDefaultCount);
+                stopCount = ((startCount + (popupDefaultCount * 2)) - popupDefaultCount);
+                popupPageCurrent = popupPageCurrent - 1;
+                if(startCount <= 0){
+                    startCount = 0;
+                    buttonBack.disabled = true;
+                }
+                buttonNext.disabled = false;
+                console.log("<");
+                console.log("Start: " + startCount);
+                console.log("Stop: " + stopCount);
+                productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+                currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
+                addItemList(startCount, stopCount);
+                var searchInput = document.getElementById('popup-search-input');
+                var searchQuery = searchInput.value.toLowerCase();
+                searchItems(searchQuery);
+            });
+
+            var buttonNext = document.createElement('button');
+            buttonNext.textContent = ">";
+            if(stopCount >= productCacheLength){
+                buttonNext.disabled = true;
+            }
+            buttonNext.addEventListener('click', function(event) {
+                removeItemList();
+                startCount = (startCount + popupDefaultCount);
+                stopCount = (stopCount + popupDefaultCount);
+                popupPageCurrent = popupPageCurrent + 1;
+                if(stopCount >= productCacheLength){
+                    stopCount = productCacheLength;
+                    buttonNext.disabled = true;
+                }
+                buttonBack.disabled = false;
+                console.log(">");
+                console.log("Start: " + startCount);
+                console.log("Stop: " + stopCount);
+                productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+                currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
+                addItemList(startCount, stopCount)
+                var searchInput = document.getElementById('popup-search-input');
+                var searchQuery = searchInput.value.toLowerCase();
+                searchItems(searchQuery);
+            });
+
+            productCountButtons.appendChild(buttonBack);
+            productCountButtons.appendChild(currentPage);
+            productCountButtons.appendChild(buttonNext);
+
+            productCountContainer.appendChild(productCount);
+            productCountContainer.appendChild(productCountButtons);
+            popup.appendChild(productCountContainer);
+
+            var productListContainer = document.createElement('div');
+            productListContainer.style.overflow = 'auto';
+            productListContainer.style.height = 'calc(100% - 80px)';
+            productListContainer.style.padding = "5px";
+
+            //cachedProductIDs.forEach(function(productID) {
+            // List Start
+            //productCacheLength
+            function addItemList(startCount, stopCount){
+                for (startCount; startCount <= (stopCount - 1); startCount++) {
+                    var productID = cachedProductIDs[startCount];
+                    var title = allData[startCount].Titel;
+                    var link = allData[startCount].Link;
+                    var image = allData[startCount].BildURL;
+                    var buttonContent = allData[startCount].Button;
+                    var date = allData[startCount].Datum;
+                    if(debug == true){console.log((startCount+1) + " - Titel: " + title)};
+                    //var title = localStorage.getItem('title_' + productID);
+                    //var image = localStorage.getItem('image_' + productID);
+                    //var buttonContent = localStorage.getItem('button_' + productID);
+                    //var date = formatDate(localStorage.getItem('date_' + productID));
+                    //var date = formatDate(getSavedDate(productID));
+
+                    if (title && image && buttonContent) {
+                        var productContainer = document.createElement('div');
+                        productContainer.classList.add('product-container');
+                        productContainer.style.display = 'flex';
+                        productContainer.style.alignItems = 'center';
+                        productContainer.style.marginBottom = '10px';
+                        productContainer.style.marginRight = '10px';
+
+                        var imageElement = document.createElement('img');
+                        imageElement.src = image;
+                        imageElement.style.width = '100px';
+                        imageElement.style.height = '100px';
+                        imageElement.style.objectFit = 'cover';
+                        imageElement.style.marginRight = '10px';
+
+                        var dateElement = document.createElement('div');
+                        //dateElement.textContent = date.replace(',', '\n');
+                        dateElement.textContent = date;
+                        dateElement.style.marginRight = '10px';
+                        dateElement.style.width = '100px';
+                        dateElement.style.textAlign = 'center';
+
+
+                        var titleElement = document.createElement('a');
+                        titleElement.classList.add('product-title');
+                        titleElement.textContent = title;
+                        titleElement.href = link;
+                        titleElement.target = "_blank";
+                        titleElement.style.flex = '1';
+
+                        var buttonContainer = document.createElement('span');
+                        buttonContainer.style.display = 'flex';
+                        buttonContainer.style.alignItems = 'center';
+                        buttonContainer.classList.add('a-button');
+                        buttonContainer.classList.add('a-button-primary');
+                        buttonContainer.classList.add('vvp-details-btn');
+
+                        var buttonSpan = document.createElement('span');
+                        buttonSpan.innerHTML = buttonContent;
+                        buttonSpan.style.width = '125px';
+                        buttonSpan.style.textAlign = 'right';
+                        buttonSpan.classList.add('a-button-inner');
+
+                        buttonContainer.appendChild(buttonSpan);
+
+                        productContainer.appendChild(imageElement);
+                        productContainer.appendChild(dateElement);
+                        productContainer.appendChild(titleElement);
+                        productContainer.appendChild(buttonContainer);
+                        productListContainer.insertBefore(productContainer, productListContainer.firstChild);
+                        //productListContainer.appendChild(productContainer);
+                    }
+                    //});
+                }
+                popup.appendChild(productListContainer);
+            }
+            function removeItemList() {
+                var elementsToRemove = document.querySelectorAll('.product-container');
+                for (var i = 0; i < elementsToRemove.length; i++) {
+                    var element = elementsToRemove[i];
+                    element.parentNode.removeChild(element);
+                }
+            }
+            function searchItems(searchQuery) {
                 var productContainers = popup.getElementsByClassName('product-container');
                 for (var i = 0; i < productContainers.length; i++) {
                     var productContainer = productContainers[i];
@@ -1351,97 +1523,9 @@
                         productContainer.style.display = 'none';
                     }
                 }
-            });
-            searchContainer.appendChild(searchInput);
-            popup.appendChild(searchContainer);
-
-            var productCountContainer = document.createElement('div');
-            productCountContainer.style.marginBottom = "5px";
-            productCountContainer.style.paddingLeft = "5px";
-
-            var productCount = document.createElement('span');
-            productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
-            productCountContainer.appendChild(productCount);
-            popup.appendChild(productCountContainer);
-
-            var productListContainer = document.createElement('div');
-            productListContainer.style.overflow = 'auto';
-            productListContainer.style.height = 'calc(100% - 80px)';
-            productListContainer.style.padding = "5px";
-
-            //cachedProductIDs.forEach(function(productID) {
-            // List Start
-            //productCacheLength
-            for (startCount; startCount <= (stopCount - 1); startCount++) {
-                var productID = cachedProductIDs[startCount];
-                var title = allData[startCount].Titel;
-                var link = allData[startCount].Link;
-                var image = allData[startCount].BildURL;
-                var buttonContent = allData[startCount].Button;
-                var date = allData[startCount].Datum;
-                if(debug == true){console.log((startCount+1) + " - Titel: " + title)};
-                //var title = localStorage.getItem('title_' + productID);
-                //var image = localStorage.getItem('image_' + productID);
-                //var buttonContent = localStorage.getItem('button_' + productID);
-                //var date = formatDate(localStorage.getItem('date_' + productID));
-                //var date = formatDate(getSavedDate(productID));
-
-                if (title && image && buttonContent) {
-                    var productContainer = document.createElement('div');
-                    productContainer.classList.add('product-container');
-                    productContainer.style.display = 'flex';
-                    productContainer.style.alignItems = 'center';
-                    productContainer.style.marginBottom = '10px';
-                    productContainer.style.marginRight = '10px';
-
-                    var imageElement = document.createElement('img');
-                    imageElement.src = image;
-                    imageElement.style.width = '100px';
-                    imageElement.style.height = '100px';
-                    imageElement.style.objectFit = 'cover';
-                    imageElement.style.marginRight = '10px';
-
-                    var dateElement = document.createElement('div');
-                    //dateElement.textContent = date.replace(',', '\n');
-                    dateElement.textContent = date;
-                    dateElement.style.marginRight = '10px';
-                    dateElement.style.width = '100px';
-                    dateElement.style.textAlign = 'center';
-
-
-                    var titleElement = document.createElement('a');
-                    titleElement.classList.add('product-title');
-                    titleElement.textContent = title;
-                    titleElement.href = link;
-                    titleElement.target = "_blank";
-                    titleElement.style.flex = '1';
-
-                    var buttonContainer = document.createElement('span');
-                    buttonContainer.style.display = 'flex';
-                    buttonContainer.style.alignItems = 'center';
-                    buttonContainer.classList.add('a-button');
-                    buttonContainer.classList.add('a-button-primary');
-                    buttonContainer.classList.add('vvp-details-btn');
-
-                    var buttonSpan = document.createElement('span');
-                    buttonSpan.innerHTML = buttonContent;
-                    buttonSpan.style.width = '125px';
-                    buttonSpan.style.textAlign = 'right';
-                    buttonSpan.classList.add('a-button-inner');
-
-                    buttonContainer.appendChild(buttonSpan);
-
-                    productContainer.appendChild(imageElement);
-                    productContainer.appendChild(dateElement);
-                    productContainer.appendChild(titleElement);
-                    productContainer.appendChild(buttonContainer);
-                    productListContainer.insertBefore(productContainer, productListContainer.firstChild);
-                    //productListContainer.appendChild(productContainer);
-                }
-                //});
             }
-
-            popup.appendChild(productListContainer);
+            addItemList(startCount,stopCount);
+            //popup.appendChild(productListContainer);
             document.body.appendChild(popup);
         }
     }
@@ -1496,7 +1580,7 @@
         saveCurrentPage();
         saveMaxPage();
         await createUI();
-        //await createGreenBar();
+        await createGreenBar();
         //highlightAllProducts();
         await highlightCachedProducts();
         checkForAutoScan();
