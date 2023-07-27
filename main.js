@@ -11,6 +11,7 @@
 // ==/UserScript==
 
 (function() {
+    'use strict';
     var debug = false;
     var redirectMinTime = 2;
     var redirectMaxTime = 5;
@@ -30,7 +31,6 @@
         ["toggleRecom","Empfehlungen ausblenden","checkbox"],
         ["toggleFooter","Footer ausblenden","checkbox"]
     ];
-    'use strict';
 
     // CSS UI Button
     var uiSettingCSS = `
