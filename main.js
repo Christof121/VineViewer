@@ -1415,7 +1415,6 @@
                 stopCount = (startCount + popupDefaultCount);
                 if(productCacheLength <= popupDefaultCount){
                     stopCount = (productCacheLength)
-                    console.log("Stop: " + stopCount);
                 }
                 popupPage.textContent = popupPageCurrent + "/" + popupPageMax;
                 productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
@@ -1557,8 +1556,9 @@
 
             var buttonNext = document.createElement('button');
             buttonNext.textContent = ">";
-            if(stopCount >= productCacheLength){
+            if(stopCount <= productCacheLength){
                 buttonNext.disabled = true;
+                buttonNext.style.cursor = "not-allowed"
             }
             buttonNext.addEventListener('click', function(event) {
                 removeItemList();
