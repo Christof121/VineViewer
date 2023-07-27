@@ -1,11 +1,12 @@
 // ==UserScript==
-// @name         Amazon Vine viewer
+// @name         [BETA] Amazon Vine viewer
 // @namespace    http://tampermonkey.net/
-// @version      0.9.1
+// @version      Beta-1.0
 // @description  Hervorheben von bereits vorhandenen Produkten bei Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
 // @match        *://amazon.de/vine/*
+// @match        *://www.amazon.de/-/en/vine/*
 // @grant        none
 // @license      MIT
 // ==/UserScript==
@@ -16,10 +17,11 @@
     var redirectMinTime = 2;
     var redirectMaxTime = 5;
     var url;
+    var allData;
     let redirectTimeout;
     var addDate;
     var openList = false;
-    var popupDefaultCount = 25;
+    var popupDefaultCount;
 
     //Menü Elements
     const id = [
@@ -257,10 +259,16 @@
         console.log("Fehler beim Öffnen der Datenbank");
     };
 
+    request.onsuccess = function(event) {
+        console.log("Verbindung zur Datenbank hergestellt");
+        main();
+    };
+
     // Falls neue Version von Datenbank vorhanden
     request.onupgradeneeded = function(event) {
         const db = event.target.result;
         const objectStore = db.createObjectStore(objectStoreName, { keyPath: "ID" });
+        console.log("Problem mit der Datenbank");
     };
 
     // Laden der Einstellungen
@@ -282,7 +290,15 @@
                     break;
             }
         }
-        popupDefaultCount = parseInt(localStorage.getItem("popupDefaultCount"));
+        //localStorage.getItem("popupDefaultCount")
+        if(localStorage.getItem("popupDefaultCount") == null){
+            popupDefaultCount = 25;
+            localStorage.setItem("popupDefaultCount", popupDefaultCount)
+            console.log("Default Wert für Popup Count nicht gesetzt. Setze auf Standart Wert: " + popupDefaultCount);
+        }else{
+            popupDefaultCount = parseInt(localStorage.getItem("popupDefaultCount"));
+        }
+
     }
 
     // Funktion zum Erstellen der grünen Leiste
@@ -608,6 +624,36 @@
             }
         });
 
+
+        //var toggleScanLabel = document.createElement('label');
+        //toggleScanLabel.textContent = 'Nur Sichtbares Cachen';
+        //toggleScanLabel.style.marginLeft = '5px';
+        //toggleScanLabel.style.userSelect = 'none';
+        //
+        //toggleDiv.appendChild(toggleScanSwitch);
+        //toggleDiv.appendChild(toggleScanLabel);
+        //
+        //var ScanPageInput = document.createElement('input');
+        //if(localStorage.getItem('scanToPage') != undefined){
+        //    var scanToPage = localStorage.getItem('scanToPage');
+        //}else{
+        //    scanToPage = getMaxPage();
+        //}
+        //if(localStorage.getItem("autoScan")=="true"){
+        //    ScanPageInput.setAttribute('disabled' , 'true');
+        //}
+        //ScanPageInput.setAttribute('type', 'number');
+        //ScanPageInput.setAttribute('maxlength', '3');
+        //ScanPageInput.style.cssText = ScanPageInputCSS;
+        //ScanPageInput.value = scanToPage;
+        //ScanPageInput.addEventListener('change', function() {
+        //    console.log("Input");
+        //    var valid = checkScanPageInput(this.value);
+        //    if(!valid){
+        //        this.value = getMaxPage();
+        //    }
+        //});
+
         var scanButton = document.createElement('button');
         var buttonText = "Start Scan";
         if(localStorage.getItem("autoScan")=="true"){
@@ -640,11 +686,10 @@
         //versionButton.style.cssText = updateButtonCSS;
         //versionButton.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
         //versionButton.target = '_blank';
-
-
+        //
+        //
         //var deleteButton = document.createElement('button');
-        ////var ids = getCachedProductIDs();
-        //var cachedProductsCount = await getProductCacheLength();
+        //var cachedProductsCount = allData.length;//
         //deleteButton.textContent = cachedProductsCount + ' Daten löschen';
         //deleteButton.style.cssText = deleteButtonCSS;
         //deleteButton.addEventListener('click', function() {
@@ -653,7 +698,7 @@
         //        clearCachedData();
         //    }
         //});
-
+        //
         //buttonDiv.appendChild(versionButton);
         //buttonDiv.appendChild(deleteButton);
 
@@ -818,18 +863,17 @@
     async function highlightCachedProducts() {
         var productTiles = document.getElementsByClassName('vvp-item-tile');
         var cachedProductIDs = await getCachedProductIDs();
-
         for (var i = 0; i < productTiles.length; i++) {
             var productTile = productTiles[i];
             var productID = getProductID(productTile);
             var color = await getColorStatus("colorHighlight");
-            if(await checkForIDInDatabase(productID)){
-                //if (cachedProductIDs.includes(productID)) {
+            if(cachedProductIDs.includes(productID)){
+                const productInfo = allData.find(data => data.ID === productID);
                 productTile.classList.add('highlighted');
                 productTile.style.backgroundColor = color;
                 var dateDiv = productTile.querySelector('#p-date');
                 if(!dateDiv){
-                    var date = await getSavedDate(productID);
+                    var date = productInfo.Datum;
                     addDateElement(productTile, date);
                 }
             }
@@ -908,6 +952,8 @@
             clearTimeout(redirectTimeout);
             localStorage.setItem("autoScan", "false");
             console.log("Auto Scan abgebrochen");
+            url = "";
+            redirectTimeout = setTimeout(redirectNextPage, 100, url);
         }
     }
 
@@ -1011,7 +1057,7 @@
             var currentPageElement = pagination.querySelector('.a-selected a');
             var currentPage = parseInt(currentPageElement.textContent.trim());
             localStorage.setItem("currentPage", currentPage);
-            if(debug == true){console.log('Current Page Saved:', currentPage);}
+            if(debug){console.log('Current Page Saved:', currentPage);}
         }
     }
 
@@ -1286,7 +1332,6 @@
             //List End
             //productCacheLength
             var stopCount = (startCount + popupDefaultCount);
-
             if(stopCount >= productCacheLength){
                 stopCount = productCacheLength;
             }
@@ -1368,11 +1413,21 @@
                 popupPageCurrent = 1;
                 startCount = 0;
                 stopCount = (startCount + popupDefaultCount);
+                if(productCacheLength <= popupDefaultCount){
+                    stopCount = (productCacheLength)
+                    console.log("Stop: " + stopCount);
+                }
                 popupPage.textContent = popupPageCurrent + "/" + popupPageMax;
                 productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
                 removeItemList();
                 buttonBack.disabled = true;
+                buttonBack.style.cursor = "not-allowed"
                 buttonNext.disabled = false;
+                buttonNext.style.cursor = "pointer"
+                if(productCacheLength<=popupDefaultCount){
+                    buttonNext.disabled = true;
+                    buttonNext.style.cursor = "not-allowed"
+                }
                 addItemList(startCount, stopCount);
             });
 
@@ -1408,6 +1463,7 @@
 
             var buttonBack = document.createElement('button');
             buttonBack.disabled = true;
+            buttonBack.style.cursor = "not-allowed"
             //buttonBack.setAttribute("id","popup-button-back");
             buttonBack.textContent = "<";
             buttonBack.addEventListener('click', function(event) {
@@ -1418,13 +1474,86 @@
                 if(startCount <= 0){
                     startCount = 0;
                     buttonBack.disabled = true;
+                    buttonBack.style.cursor = "not-allowed"
                 }
                 buttonNext.disabled = false;
+                buttonNext.style.cursor = "pointer"
                 productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
                 currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
                 addItemList(startCount, stopCount);
                 searchItems();
             });
+
+            //<<<<<<< UI
+            //            var buttonNext = document.createElement('button');
+            //            buttonNext.textContent = ">";
+            //            if(stopCount >= productCacheLength){
+            //                buttonNext.disabled = true;
+            //=======
+            //        // Anzeigen der gespeicherten Daten aus dem Cache
+            //        var cachedProductIDs = await getCachedProductIDs();
+            //        var productCacheLength = await getProductCacheLength();
+            //        //cachedProductIDs.forEach(function(productID) {
+            //        for (var x = 0 ; x <= (productCacheLength - 1); x++) {
+            //            var productID = cachedProductIDs[x];
+            //            var title = allData[x].Titel;
+            //            var image = allData[x].BildURL;
+            //            var buttonContent = allData[x].Button;
+            //            var date = allData[x].Datum;
+            //            if(debug == true){console.log((x+1) + " - Titel: " + title)};
+            //            //var title = localStorage.getItem('title_' + productID);
+            //            //var image = localStorage.getItem('image_' + productID);
+            //            //var buttonContent = localStorage.getItem('button_' + productID);
+            //            //var date = formatDate(localStorage.getItem('date_' + productID));
+            //            //var date = formatDate(getSavedDate(productID));
+            //
+            //            if (title && image && buttonContent) {
+            //                var productContainer = document.createElement('div');
+            //                productContainer.classList.add('product-container');
+            //                productContainer.style.display = 'flex';
+            //                productContainer.style.alignItems = 'center';
+            //                productContainer.style.marginBottom = '10px';
+            //                productContainer.style.marginRight = '10px';
+            //
+            //                var imageElement = document.createElement('img');
+            //                imageElement.src = image;
+            //                imageElement.style.width = '100px';
+            //                imageElement.style.height = '100px';
+            //                imageElement.style.objectFit = 'cover';
+            //                imageElement.style.marginRight = '10px';
+            //
+            //                var dateElement = document.createElement('div');
+            //                //dateElement.textContent = date.replace(',', '\n');
+            //                dateElement.textContent = date;
+            //                dateElement.style.marginRight = '10px';
+            //
+            //                var titleElement = document.createElement('span');
+            //                titleElement.classList.add('product-title');
+            //                titleElement.textContent = title;
+            //                titleElement.style.flex = '1';
+            //
+            //                var buttonContainer = document.createElement('span');
+            //                buttonContainer.style.display = 'flex';
+            //                buttonContainer.style.alignItems = 'center';
+            //                buttonContainer.classList.add('a-button');
+            //                buttonContainer.classList.add('a-button-primary');
+            //                buttonContainer.classList.add('vvp-details-btn');
+            //
+            //                var buttonSpan = document.createElement('span');
+            //                buttonSpan.innerHTML = buttonContent;
+            //                buttonSpan.style.width = '125px';
+            //                buttonSpan.style.textAlign = 'right';
+            //                buttonSpan.classList.add('a-button-inner');
+            //
+            //                buttonContainer.appendChild(buttonSpan);
+            //
+            //                productContainer.appendChild(imageElement);
+            //                productContainer.appendChild(dateElement);
+            //                productContainer.appendChild(titleElement);
+            //                productContainer.appendChild(buttonContainer);
+            //                productListContainer.insertBefore(productContainer, productListContainer.firstChild);
+            //                //productListContainer.appendChild(productContainer);
+            //>>>>>>> main
 
             var buttonNext = document.createElement('button');
             buttonNext.textContent = ">";
@@ -1439,8 +1568,10 @@
                 if(stopCount >= productCacheLength){
                     stopCount = productCacheLength;
                     buttonNext.disabled = true;
+                    buttonNext.style.cursor = "not-allowed"
                 }
                 buttonBack.disabled = false;
+                buttonBack.style.cursor = "pointer"
                 productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
                 currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
                 addItemList(startCount, stopCount)
@@ -1584,86 +1715,168 @@
     }
 
     // Funktion zum Öffnen des Popups bei Klick auf "Amazon Vine viewer"
-    function openPopup() {
-        var greenBar = document.getElementById('green-bar');
-        var vineViewerText = greenBar.querySelector('span');
-
-        var link = document.createElement('a');
-        link.textContent = vineViewerText.textContent;
-        link.href = '#';
-        link.style.color = 'blue';
-        link.style.textDecoration = 'underline';
-        link.addEventListener('click', function() {
-            createPopup();
-        });
-
-        vineViewerText.textContent = '';
-        vineViewerText.appendChild(link);
-
-    }
+    //function openPopup() {
+    //    var greenBar = document.getElementById('green-bar');
+    //    var vineViewerText = greenBar.querySelector('span');
+    //
+    //    var link = document.createElement('a');
+    //    link.textContent = vineViewerText.textContent;
+    //    link.href = '#';
+    //    link.style.color = 'blue';
+    //    link.style.textDecoration = 'underline';
+    //    link.addEventListener('click', function() {
+    //        createPopup();
+    //    });
+    //
+    //    vineViewerText.textContent = '';
+    //    vineViewerText.appendChild(link);
+    //
+    //}
 
     // Hauptfunktion
     async function main() {
-        var debug;
+        if(debug){console.log("[INi] - Amazon Vine Viewer")};
         var nextPage;
         var currentPage;
         var maxPage;
         var rand;
-        loadSettings();
-        saveCurrentPage();
-        saveMaxPage();
-        await createUI();
-        //await createGreenBar();
-        //highlightAllProducts();
-        await highlightCachedProducts();
         checkForAutoScan();
+        loadSettings();
+        await saveCurrentPage();
+        if(debug){console.log("[INi] - Aktuelle Seite gespeichert")};
+        await saveMaxPage();
+        if(debug){console.log("[INi] - Maximale Seite gespeichert")};
+        try{
+            allData = await getAllDataFromDatabase();
+            if(debug){console.log("[INi] - Alle Daten abgefragt")};
+        } catch (error) {
+            console.log("Fehler beim abrufen der Datenbank");
+        }
+        //await createGreenBar();//Ale Statusleiste
+        //if(debug){console.log("[INi] - Tool Bar Initialisiert")};
+        await createUI();
+        if(debug){console.log("[INi] - Overlay geladen")};
+        //await openPopup();
+        if(debug){console.log("[INi] - Popup Initialisiert")};
+        await highlightCachedProducts();
+        if(debug){console.log("[INi] - Cached Produkte hervorgehoben")};
+        await checkForAutoScan();
+        if(debug){console.log("[INi] - Auto Scan überprüft")};
         var highlightVisibility = getToggleStatus("toggleHighlight");
-        toggleHighlightVisibility(highlightVisibility);
+        await toggleHighlightVisibility(highlightVisibility);
+        if(debug){console.log("[INi] - Sichtbarkeit an / aus")};
         if(getToggleStatus("toggleScan")){
             scanAndCacheVisibleProducts();
+            if(debug){console.log("[INi] - Sichtbare Produkte Scannen")};
         }else{
-            scanAndCacheAllProducts();
+            await scanAndCacheAllProducts();
+            if(debug){console.log("[INi] - Alle Produkte Scannen")};
         }
-        window.addEventListener('scroll', scanAndCacheVisibleProducts);
-        //await openPopup();
-        //getCachedProductIDs();
-        window.addEventListener('keydown', function(event) {
-            const key = event.key; // "ArrowRight", "ArrowLeft", "ArrowUp", or "ArrowDown"
-            switch (event.key) {
-                case "ArrowLeft":
-                    // Left pressed
-                    currentPage = getCurrentPage();
-                    maxPage = getMaxPage();
-                    nextPage = getCurrentPage() - 1;
-                    rand = 100;
-                    if(nextPage != 0) {
-                        console.log("Left");
-                        console.log("Weiterleitung auf " + nextPage);
-                        url = "https://www.amazon.de/vine/vine-items?queue=encore&pn=&cn=&page=" + nextPage;
-                        redirectTimeout = setTimeout(redirectNextPage, rand, url);
-                    }
-
-                    break;
-                case "ArrowRight":
-                    // Right pressed
-                    currentPage = getCurrentPage();
-                    maxPage = getMaxPage();
-                    nextPage = getCurrentPage() + 1;
-                    rand = 100;
-                    if(nextPage <= maxPage) {
-                        console.log("Right");
-                        console.log("Weiterleitung auf " + nextPage);
-                        url = "https://www.amazon.de/vine/vine-items?queue=encore&pn=&cn=&page=" + nextPage;
-                        redirectTimeout = setTimeout(redirectNextPage, rand, url);
-                    }
-                    break;
-
+        window.addEventListener('scroll', function(event){
+            if(localStorage.getItem("autoScan") == "false"){
+                scanAndCacheVisibleProducts();
             }
         });
+        //<<<<<<< UI
+        //loadSettings();
+        //saveCurrentPage();
+        //saveMaxPage();
+        //await createUI();
+        //await createGreenBar();
+        //highlightAllProducts();
+        //await highlightCachedProducts();
+        //checkForAutoScan();
+        //var highlightVisibility = getToggleStatus("toggleHighlight");
+        //await toggleHighlightVisibility(highlightVisibility);
+        //if(getToggleStatus("toggleScan")){
+        //    scanAndCacheVisibleProducts();
+        //}
+        //=======
+        //await saveCurrentPage();
+        //if(debug){console.log("[INi] - Aktuelle Seite gespeichert")};
+        //await saveMaxPage();
+        //if(debug){console.log("[INi] - Maximale Seite gespeichert")};
+        //try{//
+        //    allData = await getAllDataFromDatabase();
+        //} catch (error) {
+        //    console.log("Fehler beim abrufen der Datenbank");
+        //}
+        //if(debug){console.log("[INi] - Alle Daten abgefragt")};
+        //await createGreenBar();
+        //if(debug){console.log("[INi] - Tool Bar Initialisiert")};
+        //highlightAllProducts();
+        //await highlightCachedProducts();
+        //if(debug){console.log("[INi] - Cached Produkte hervorgehoben")};
+        //await checkForAutoScan();
+        //if(debug){console.log("[INi] - Auto Scan überprüft")};
+        //var highlightVisibility = getHighlightVisibility();
+        //if(debug){console.log("[INi] - Status Sichtbarkeit abgefragt")};
+        //await toggleHighlightVisibility(highlightVisibility);
+        //if(debug){console.log("[INi] - Sichtbarkeit an / aus")};
+        //if(localStorage.getItem("autoScan") == "false"){
+        //    if(await getScanVisibility()){
+        //        await scanAndCacheVisibleProducts();
+        //    }else{
+        //        await scanAndCacheAllProducts();
+        //    }
+        //  }else{
+        //    if(debug){console.log("Auto Scan aktiv, Überspringen des automatischen Scans")};
+        //}
+        //>>>>>>> main
+        //<<<<<<< UI
+        //window.addEventListener('scroll', scanAndCacheVisibleProducts);
+        //await openPopup();
+        //=======
+        //if(debug){console.log("[INi] - Speichern aller Sichtbaren / nicht Sichtbaren Produkte")};
+        //await openPopup();
+        //if(debug){console.log("[INi] - Popup Initialisiert")};
+        //window.addEventListener('scroll', function(event){
+        //    if(localStorage.getItem("autoScan") == "false"){
+        //        scanAndCacheVisibleProducts();
+        //    }
+        //});
+        //>>>>>>> main
+        //getCachedProductIDs();
+
+        // Vorrübergehend deaktiviert -> Aufnahme in den Einstellungen geplant
+        //window.addEventListener('keydown', function(event) {
+        //    console.log("Key Event");
+        //    const key = event.key; // "ArrowRight", "ArrowLeft", "ArrowUp", or "ArrowDown"
+        //    switch (event.key) {
+        //        case "ArrowLeft":
+        //            // Left pressed
+        //            currentPage = getCurrentPage();
+        //            maxPage = getMaxPage();
+        //            nextPage = getCurrentPage() - 1;
+        //            rand = 100;
+        //            if(nextPage != 0) {
+        //                console.log("Left");
+        //                console.log("Weiterleitung auf " + nextPage);
+        //                url = "https://www.amazon.de/vine/vine-items?queue=encore&pn=&cn=&page=" + nextPage;
+        //                redirectTimeout = setTimeout(redirectNextPage, rand, url);
+        //            }
+//
+        //            break;
+        //        case "ArrowRight":
+        //            // Right pressed
+        //            currentPage = getCurrentPage();
+        //            maxPage = getMaxPage();
+        //            nextPage = getCurrentPage() + 1;
+        //            rand = 100;
+        //            if(nextPage <= maxPage) {
+        //                console.log("Right");
+        //                console.log("Weiterleitung auf " + nextPage);
+        //                url = "https://www.amazon.de/vine/vine-items?queue=encore&pn=&cn=&page=" + nextPage;
+        //                redirectTimeout = setTimeout(redirectNextPage, rand, url);
+        //            }
+        //            break;
+//
+        //    }
+        //});
 
         //window.addEventListener("DOMContentLoaded", AutoScan());
     }
 
-    main();
+    //main();
 
 })();
