@@ -298,6 +298,12 @@
         }else{
             popupDefaultCount = parseInt(localStorage.getItem("popupDefaultCount"));
         }
+        if(localStorage.getItem("autoScan") == null){
+            localStorage.setItem("autoScan", false)
+            console.log("Default Wert für AutoScan nicht gesetzt. Wert auf Deafult gesetzt: " + false);
+        }else{
+            popupDefaultCount = parseInt(localStorage.getItem("popupDefaultCount"));
+        }
 
     }
 
