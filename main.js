@@ -1559,7 +1559,6 @@
             if(stopCount >= productCacheLength){
                 buttonNext.disabled = true;
                 buttonNext.style.cursor = "not-allowed"
-                console.log("Count zu lang");
             }
             buttonNext.addEventListener('click', function(event) {
                 removeItemList();
