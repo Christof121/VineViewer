@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [BETA] Amazon Vine viewer
 // @namespace    http://tampermonkey.net/
-// @version      Beta-1.0
+// @version      Beta-1.1
 // @description  Hervorheben von bereits vorhandenen Produkten bei Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -252,18 +252,49 @@
     const dbVersion = 1;
     const objectStoreName = "Products";
 
-    checkUpdate();
     async function checkUpdate(){
-    var GF = new GreasyFork(); // set upping api
-    var code = await GF.get().script().code(471094); // Get code
-    var version = GF.parseScriptCodeMeta(code).filter(e => e.meta === '@version')[0].value; // filtering array and getting value of @version
+        console.log("Prüfe auf Updates");
+        var lastUpdateCheck = localStorage.getItem("lastUpdateCheck");
+        if(lastUpdateCheck == null){
+            localStorage.setItem("lastUpdateCheck",Date());
+            lastUpdateCheck = new Date();
+        }
+        var lastUpdateCheckObj = new Date(lastUpdateCheck)
+        var updateCheckInterval = 24; // Angabe in Stunden
+        var lastUpdateCheckDiff = ((new Date() - lastUpdateCheckObj) / (1000 * 60 * 60));
+        var lastUpdateCheckLog = new Date(lastUpdateCheck).toLocaleString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        console.log("Letzte Überprüfung auf Updates: " + lastUpdateCheckLog);
+        if(updateCheckInterval <= lastUpdateCheckDiff){
+            console.log("Abfrage Erfolgreich");
+            localStorage.setItem("lastUpdateCheck",Date());
+            try{
+                var GF = new GreasyFork(); // set upping api
+                var code = await GF.get().script().code(471094); // Get code
+                var version = GF.parseScriptCodeMeta(code).filter(e => e.meta === '@version')[0].value; // filtering array and getting value of @version
 
-    console.log(version); // now you can do whatever you want with version
-        if(GM_info?.script?.version != version){
-            console.log("Neue Version verfügbar");
+                if(GM_info?.script?.version != version){
+                    console.log("Version " + version + " verfügbar");
+                    localStorage.setItem("updateAvailable", true);
+                }else{
+                    console.log("Aktuellste Version installiert");
+                    localStorage.setItem("updateAvailable", false);
+                }
+            } catch (error) {
+                console.log("Es gab einen Fehler bei der Versions Abfrage");
+                console.log("Fehler: " + error);
+            }
+        }else{
+            if(debug){console.log("Intervall zu gering. Prüfen auf Updates erfolgen nur 1x am Tag.");}
         }
     }
-    
+
     // Verbindungsaufbau zur Datenbank
 
     const request = indexedDB.open(dbName, dbVersion);
@@ -310,6 +341,11 @@
             console.log("Default Wert für Popup Count nicht gesetzt. Setze auf Standart Wert: " + popupDefaultCount);
         }else{
             popupDefaultCount = parseInt(localStorage.getItem("popupDefaultCount"));
+        }
+        var updateAvailable = localStorage.getItem("updateAvailable");
+        if(updateAvailable == null){
+            //localStorage.setItem("updateAvailable", false);
+            updateAvailable = false;
         }
 
     }
@@ -1754,6 +1790,8 @@
         var maxPage;
         var rand;
         checkForAutoScan();
+        await checkUpdate();
+        if(debug){console.log("[INi] - Prüfen auf Updates")};
         loadSettings();
         await saveCurrentPage();
         if(debug){console.log("[INi] - Aktuelle Seite gespeichert")};
@@ -1868,7 +1906,7 @@
         //                url = "https://www.amazon.de/vine/vine-items?queue=encore&pn=&cn=&page=" + nextPage;
         //                redirectTimeout = setTimeout(redirectNextPage, rand, url);
         //            }
-//
+        //
         //            break;
         //        case "ArrowRight":
         //            // Right pressed
@@ -1883,7 +1921,7 @@
         //                redirectTimeout = setTimeout(redirectNextPage, rand, url);
         //            }
         //            break;
-//
+        //
         //    }
         //});
 
