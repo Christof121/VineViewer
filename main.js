@@ -7,6 +7,7 @@
 // @match        *://www.amazon.de/vine/*
 // @match        *://amazon.de/vine/*
 // @match        *://www.amazon.de/-/en/vine/*
+// @require      https://greasyfork.org/scripts/445697/code/index.js
 // @grant        none
 // @license      MIT
 // ==/UserScript==
@@ -251,6 +252,18 @@
     const dbVersion = 1;
     const objectStoreName = "Products";
 
+    checkUpdate();
+    async function checkUpdate(){
+    var GF = new GreasyFork(); // set upping api
+    var code = await GF.get().script().code(471094); // Get code
+    var version = GF.parseScriptCodeMeta(code).filter(e => e.meta === '@version')[0].value; // filtering array and getting value of @version
+
+    console.log(version); // now you can do whatever you want with version
+        if(GM_info?.script?.version != version){
+            console.log("Neue Version verfügbar");
+        }
+    }
+    
     // Verbindungsaufbau zur Datenbank
 
     const request = indexedDB.open(dbName, dbVersion);
