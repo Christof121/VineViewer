@@ -1556,9 +1556,10 @@
 
             var buttonNext = document.createElement('button');
             buttonNext.textContent = ">";
-            if(stopCount <= productCacheLength){
+            if(stopCount >= productCacheLength){
                 buttonNext.disabled = true;
                 buttonNext.style.cursor = "not-allowed"
+                console.log("Count zu lang");
             }
             buttonNext.addEventListener('click', function(event) {
                 removeItemList();
@@ -1855,7 +1856,7 @@
         //                url = "https://www.amazon.de/vine/vine-items?queue=encore&pn=&cn=&page=" + nextPage;
         //                redirectTimeout = setTimeout(redirectNextPage, rand, url);
         //            }
-//
+        //
         //            break;
         //        case "ArrowRight":
         //            // Right pressed
@@ -1870,7 +1871,7 @@
         //                redirectTimeout = setTimeout(redirectNextPage, rand, url);
         //            }
         //            break;
-//
+        //
         //    }
         //});
 
