@@ -2,7 +2,7 @@
 // @name         [BETA] Amazon Vine viewer
 // @namespace    http://tampermonkey.net/
 // @version      Beta-1.0
-// @description  Hervorheben von bereits vorhandenen Produkten bei Amazon Vine
+// @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
 // @match        *://amazon.de/vine/*
@@ -232,6 +232,17 @@
     width: 90%;
     display: flex;
     `;
+    //CSS Fav Element
+    var favCSS = `
+    float: right;
+    display: flex;
+    margin: 0;
+    color: white;
+    height: 0;
+    font-size: 25px;
+    text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;
+    cursor: pointer;
+    `
 
     // CSS für das hinzugefügte Favorite Icon
     var favElementCSS = `
@@ -869,11 +880,14 @@
     async function highlightCachedProducts() {
         var productTiles = document.getElementsByClassName('vvp-item-tile');
         var cachedProductIDs = await getCachedProductIDs();
+        var favcount = 1;
         for (var i = 0; i < productTiles.length; i++) {
             var productTile = productTiles[i];
             var productID = getProductID(productTile);
             var color = await getColorStatus("colorHighlight");
+            var isFav;
             if(cachedProductIDs.includes(productID)){
+                //Produkt in der Datenbank
                 const productInfo = allData.find(data => data.ID === productID);
                 productTile.classList.add('highlighted');
                 productTile.style.backgroundColor = color;
@@ -882,7 +896,16 @@
                     var date = productInfo.Datum;
                     addDateElement(productTile, date);
                 }
+
             }
+            // Hinzufügen des Favoriten Icons
+            //isFav = false;
+            //if(cachedProductIDs.includes(productID)){
+            //    const productInfo = allData.find(data => data.ID === productID);
+            //    isFav = productInfo.Favorit;
+            //}
+            //console.log("Fav: " + isFav);
+            addFavElement(productTile, productID);
         }
     }
 
@@ -905,6 +928,76 @@
         contentContainer.insertBefore(dateElement, contentContainer.firstChild);
     }
 
+    async function addFavElement(productTile, productID){
+
+        var isFav = false;
+
+        var cachedProductIDs = await getCachedProductIDs();
+            if(cachedProductIDs.includes(productID)){
+                const productInfo = allData.find(data => data.ID === productID);
+                isFav = productInfo.Favorit;
+            }
+
+        var favElement = document.createElement('div');
+
+        favElement.setAttribute("id", "p-fav");
+        favElement.style.cssText = favCSS;
+        favElement.textContent = "★";
+        if(isFav){
+            favElement.style.color = "#ffe143";
+        }
+
+        favElement.addEventListener('click', async function() {
+            // Speichern des Wertes in der Datenbank
+            const request = indexedDB.open(dbName, dbVersion);
+
+            request.onerror = function(event) {
+                console.log("Fehler beim Öffnen der Datenbank ID:1");
+            };
+
+            request.onsuccess = function(event) {
+                const db = event.target.result;
+
+                const transaction = db.transaction([objectStoreName], "readwrite");
+                const objectStore = transaction.objectStore(objectStoreName);
+
+                const getRequest = objectStore.get(productID);
+                getRequest.onsuccess = function(event) {
+                    const data = event.target.result;
+                    if (data) {
+                        data.Favorit = !isFav;
+                        const updateRequest = objectStore.put(data);
+                        updateRequest.onsuccess = function(event) {
+                            console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`);
+                            isFav = !isFav;
+                            if(isFav){
+                                favElement.style.color = "#ffe143";
+                            }else{
+                                favElement.style.color = "white";
+                            }
+                            // Aktualisieren der Daten
+                            allData = getAllDataFromDatabase();
+                        };
+                        updateRequest.onerror = function(event) {
+                            console.log(`Fehler beim Aktualisieren des Favorit-Werts für ID ${productID}.`);
+                        };
+                    } else {
+                        console.log(`Datensatz mit ID ${productID} wurde nicht gefunden.`);
+                    }
+                };
+
+                getRequest.onerror = function(event) {
+                    console.log(`Fehler beim Abrufen des Datensatzes mit ID ${productID}.`);
+                };
+            };
+
+
+
+        });
+
+        var contentContainer = productTile;
+        contentContainer.insertBefore(favElement, contentContainer.firstChild);
+    }
     // Funktion zum Scannen und Zwischenspeichern der sichtbaren Produkte
     function scanAndCacheVisibleProducts() {
         var productTiles = document.getElementsByClassName('vvp-item-tile');
