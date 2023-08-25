@@ -939,7 +939,13 @@
         cacheProducts(visibleProductIDs, visibleProductTitles, visibleProductLinks, visibleProductImages, visibleProductButtons);
     }
 
-
+    //Auto Scan per Befehlszeile starten
+    window.autoscan = function(value) {
+        // Hier kannst du die gewünschte Funktionalität basierend auf dem übergebenen Wert ausführen
+        console.log('Autoscan gestartet mit Wert:', value);
+        // Füge hier den Code ein, den du ausführen möchtest
+        AutoScanStart(value);
+    };
 
     function AutoScanStart(scanToPage) {
         if(debug == true){console.log("Cur: " + getCurrentPage())};
