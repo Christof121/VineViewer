@@ -968,7 +968,7 @@
                         data.Favorit = !isFav;
                         const updateRequest = objectStore.put(data);
                         updateRequest.onsuccess = function(event) {
-                            console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`);
+                            if(debug){console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`)};
                             isFav = !isFav;
                             if(isFav){
                                 favElement.style.color = "#ffe143";
