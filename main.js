@@ -496,6 +496,12 @@
             //localStorage.setItem("updateAvailable", false);
             updateAvailable = false;
         }
+        if(localStorage.getItem("autoScan") == null){
+            localStorage.setItem("autoScan", false)
+            console.log("Default Wert für AutoScan nicht gesetzt. Wert auf Deafult gesetzt: " + false);
+        }else{
+            popupDefaultCount = parseInt(localStorage.getItem("popupDefaultCount"));
+        }
 
     }
 
@@ -1133,7 +1139,13 @@
         cacheProducts(visibleProductIDs, visibleProductTitles, visibleProductLinks, visibleProductImages, visibleProductButtons);
     }
 
-
+    //Auto Scan per Befehlszeile starten
+    window.autoscan = function(value) {
+        // Hier kannst du die gewünschte Funktionalität basierend auf dem übergebenen Wert ausführen
+        console.log('Autoscan gestartet mit Wert:', value);
+        // Füge hier den Code ein, den du ausführen möchtest
+        AutoScanStart(value);
+    };
 
     function AutoScanStart(scanToPage) {
         if(debug == true){console.log("Cur: " + getCurrentPage())};
@@ -1756,7 +1768,7 @@
 
             var buttonNext = document.createElement('button');
             buttonNext.textContent = ">";
-            if(stopCount <= productCacheLength){
+            if(stopCount >= productCacheLength){
                 buttonNext.disabled = true;
                 buttonNext.style.cursor = "not-allowed"
             }
