@@ -1,15 +1,16 @@
 // ==UserScript==
-// @name         [BETA] Amazon Vine viewer
+// @name         [BETA] AVV - Update Check
 // @namespace    http://tampermonkey.net/
-// @version      Beta-1.1
+// @version      Beta-0.9
 // @description  Hervorheben von bereits vorhandenen Produkten bei Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
 // @match        *://amazon.de/vine/*
 // @match        *://www.amazon.de/-/en/vine/*
-// @require      https://greasyfork.org/scripts/445697/code/index.js
-// @grant        none
+// @require      https://greasyfork.org/scripts/445697-greasy-fork-api/code/Greasy%20Fork%20API.js?version=1238959
 // @license      MIT
+// @grant         GM.xmlHttpRequest
+// @connect greasyfork.org
 // ==/UserScript==
 
 (function() {
@@ -23,6 +24,7 @@
     var addDate;
     var openList = false;
     var popupDefaultCount;
+    var updateCheckInterval = 0.005; // Angabe in Stunden
 
     //Menü Elements
     const id = [
@@ -260,7 +262,6 @@
             lastUpdateCheck = new Date();
         }
         var lastUpdateCheckObj = new Date(lastUpdateCheck)
-        var updateCheckInterval = 24; // Angabe in Stunden
         var lastUpdateCheckDiff = ((new Date() - lastUpdateCheckObj) / (1000 * 60 * 60));
         var lastUpdateCheckLog = new Date(lastUpdateCheck).toLocaleString('de-DE', {
             hour: '2-digit',
@@ -275,9 +276,12 @@
             console.log("Abfrage Erfolgreich");
             localStorage.setItem("lastUpdateCheck",Date());
             try{
-                var GF = new GreasyFork(); // set upping api
-                var code = await GF.get().script().code(471094); // Get code
-                var version = GF.parseScriptCodeMeta(code).filter(e => e.meta === '@version')[0].value; // filtering array and getting value of @version
+                console.log(await getVersion());
+                var version = await getVersion();
+
+                //GreasyFork.getScriptData('471094').then(data => {
+                //    console.log(data)
+                //});
 
                 if(GM_info?.script?.version != version){
                     console.log("Version " + version + " verfügbar");
@@ -293,6 +297,22 @@
         }else{
             if(debug){console.log("Intervall zu gering. Prüfen auf Updates erfolgen nur 1x am Tag.");}
         }
+    }
+
+    async function getVersion(){
+        return new Promise((res, rej) => {
+			GM.xmlHttpRequest({
+				url: `https://greasyfork.org/scripts/471094.json`,
+				onload: response => {
+					const data = JSON.parse(response.responseText)
+
+					return res(data["version"])
+				},
+				onerror: err => {
+					return rej(err)
+				}
+			})
+		})
     }
 
     // Verbindungsaufbau zur Datenbank
