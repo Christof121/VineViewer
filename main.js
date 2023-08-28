@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name         [BETA] AVV - Update Check
 // @namespace    http://tampermonkey.net/
-// @version      Beta-0.9
+// @version      Beta-1.0
 // @description  Hervorheben von bereits vorhandenen Produkten bei Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
 // @match        *://amazon.de/vine/*
 // @match        *://www.amazon.de/-/en/vine/*
-// @require      https://greasyfork.org/scripts/445697-greasy-fork-api/code/Greasy%20Fork%20API.js?version=1238959
 // @license      MIT
 // @grant         GM.xmlHttpRequest
+// @grant         GM.openInTab
 // @connect greasyfork.org
 // ==/UserScript==
 
@@ -24,7 +24,10 @@
     var addDate;
     var openList = false;
     var popupDefaultCount;
-    var updateCheckInterval = 0.005; // Angabe in Stunden
+    var updateCheckInterval = 24; // Angabe in Stunden
+    var updateMessageDuration = 15; // Angabe in Sekunden
+    var updateerror;
+    var scriptURL = "https://greasyfork.org/de/scripts/471094";
 
     //Menü Elements
     const id = [
@@ -53,7 +56,7 @@
     align-items: center;
     cursor: pointer;
     opacity: 1;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, bottom 0.2s ease 0s;
     `;
 
     var uiListCSS = `
@@ -79,7 +82,6 @@
     `
 
     var settingPopupCSS = `
-    display: flex;
     position: fixed;
     left: 10px;
     bottom: 10px;
@@ -89,7 +91,7 @@
     border: black 2px solid;
     border-radius: 10px;
     background-color: #232f3e;
-    transition: width 0.2s, height 0.2s;
+    transition: width 0.2s, height 0.2s, bottom 0.2s ease 0s;;
     color: white;
     `
 
@@ -159,6 +161,28 @@
     justify-content: center;
     display: flex;
     `
+    //Css Update Message Div
+    var updateMessageDivCSS = `
+    display: none;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    left: 10px;
+    bottom: 10px;
+    width: auto;
+    height: 0px;
+    z-index: 9999;
+    border: black 2px solid;
+    border-radius: 10px;
+    background-color: red;
+    opacity: 0;
+    transition: height 0.2s, opacity 0.2s;
+    color: white;
+    `
+    var updateMessageContentCSS = `
+    padding: 0 10px;
+    `
+
     // CSS für die grüne Leiste
     var greenBarCSS = `
   /* position: fixed; */
@@ -255,7 +279,7 @@
     const objectStoreName = "Products";
 
     async function checkUpdate(){
-        console.log("Prüfe auf Updates");
+        if(debug){console.log("Prüfe auf Updates")};
         var lastUpdateCheck = localStorage.getItem("lastUpdateCheck");
         if(lastUpdateCheck == null){
             localStorage.setItem("lastUpdateCheck",Date());
@@ -273,11 +297,10 @@
         });
         console.log("Letzte Überprüfung auf Updates: " + lastUpdateCheckLog);
         if(updateCheckInterval <= lastUpdateCheckDiff){
-            console.log("Abfrage Erfolgreich");
             localStorage.setItem("lastUpdateCheck",Date());
             try{
-                console.log(await getVersion());
                 var version = await getVersion();
+                //var version = "0.9";
 
                 //GreasyFork.getScriptData('471094').then(data => {
                 //    console.log(data)
@@ -286,16 +309,33 @@
                 if(GM_info?.script?.version != version){
                     console.log("Version " + version + " verfügbar");
                     localStorage.setItem("updateAvailable", true);
+                    return true;
                 }else{
                     console.log("Aktuellste Version installiert");
                     localStorage.setItem("updateAvailable", false);
+                    return false;
                 }
             } catch (error) {
+                updateerror = error;
                 console.log("Es gab einen Fehler bei der Versions Abfrage");
                 console.log("Fehler: " + error);
+                return "error";
             }
         }else{
-            if(debug){console.log("Intervall zu gering. Prüfen auf Updates erfolgen nur 1x am Tag.");}
+            if(debug){
+                console.log("Intervall zu gering. Prüfen auf Updates erfolgen nur 1x am Tag.");
+            }
+            var nextUpdateCheck = new Date(lastUpdateCheckObj.getTime() + (updateCheckInterval * 60 * 60 * 1000));
+            var nextUpdateCheckLog = new Date(nextUpdateCheck).toLocaleString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+            console.log("Nächste Überprüfung Erfolgt: " + nextUpdateCheckLog);
+            return "intervall"
         }
     }
 
@@ -313,6 +353,95 @@
 				}
 			})
 		})
+    }
+
+    async function updateMessage() {
+        var msg;
+        var updateMessageDiv = document.createElement('div');
+        updateMessageDiv.style.cssText = updateMessageDivCSS;
+        updateMessageDiv.setAttribute('id', 'ui-update');
+        updateMessageDiv.hidden = true;
+
+        var updateMessageContent = document.createElement('div');
+        updateMessageContent.style.cssText = updateMessageContentCSS;
+
+        updateMessageDiv.appendChild(updateMessageContent);
+
+        switch(await checkUpdate()) {
+            // Update verfügbar
+            case true:
+                var version = await getVersion();
+                localStorage.setItem("newVersion", version);
+                msg = "Version " + version + " verfügbar";
+                message(msg);
+                updateMessageContent.addEventListener('click', function() {
+                    window.open(scriptURL, "_blank");
+                });
+                break;
+            // Kein Update verfügbar
+            case false:
+                break;
+            // Prüfung bereits stattgefunden
+            case "intervall":
+                version = localStorage.getItem("newVersion");
+                if(GM_info?.script?.version != version){
+                    console.log("Neue Version vorhanden, intervall nicht abgelaufen, lade aus Local");
+                    msg = "Version " + version + " verfügbar";
+                    message(msg);
+                    updateMessageContent.addEventListener('click', function() {
+                        window.open(scriptURL, "_blank");
+                    });
+                }
+                break;
+                // Fehler bei der Abfrage
+            case "error":
+                msg = "Fehler Überprüfen von Updates";
+                message(msg);
+                updateMessageContent.addEventListener('click', function() {
+                    alert("Error: " + updateerror);
+                });
+                break;
+        }
+        function message(msg){
+            updateMessageContent.textContent = msg
+            document.body.prepend(updateMessageDiv);
+
+            setTimeout(() => {
+                updateMessageDiv.style.display = "flex";
+                setTimeout(() => {
+                    var uiSetting = document.getElementById('ui-setting');
+                    var uiButton = document.getElementById('ui-button');
+                    var uiList = document.getElementById('ui-list');
+                    var uiUpdate = document.getElementById('ui-update');
+                    uiList.style.bottom = "90px";
+                    uiButton.style.bottom = "50px";
+                    uiSetting.style.bottom = "50px";
+                    updateMessageDiv.hidden = false;
+                    //updateMessageDiv.style.display = "flex";
+                    updateMessageDiv.style.cursor = "pointer";
+                    updateMessageDiv.style.height = "30px";
+                    updateMessageDiv.style.opacity = "1";
+                }, 200);
+            }, 100);
+
+            //Meldung ausblenden nach x Sekunden
+            setTimeout(() => {
+                var uiSetting = document.getElementById('ui-setting');
+                var uiButton = document.getElementById('ui-button');
+                var uiList = document.getElementById('ui-list');
+                var uiUpdate = document.getElementById('ui-update');
+                uiList.style.bottom = "50px";
+                uiButton.style.bottom = "10px";
+                uiSetting.style.bottom = "10px";
+                updateMessageDiv.hidden = true;
+                updateMessageDiv.style.height = "0px";
+                updateMessageDiv.style.opacity = "0";
+                setTimeout(() => {
+                    updateMessageDiv.style.display = "none";
+                }, 200);
+            }, (updateMessageDuration * 1000));
+            //GM.openInTab("https://greasyfork.org/de/scripts/471094-beta-amazon-vine-viewer");
+        }
     }
 
     // Verbindungsaufbau zur Datenbank
@@ -382,6 +511,7 @@
             var settingPopup = document.getElementById('ui-setting');
             var settingPopupContent = document.getElementById('ui-setting-content');
             var uiList = document.getElementById('ui-list');
+            settingPopup.hidden = false;
             settingPopupContent.hidden = false;
             setTimeout(() => {
                 settingPopupContent.style.opacity = "1";
@@ -406,9 +536,8 @@
         //addSettingsUIButton.appendChild(addUIIMG);
         addSettingsUIButton.appendChild(addButtonContent);
         document.body.prepend(addSettingsUIButton);
+
         createsettingPopup();
-
-
 
         var addListButton = document.createElement("div");
         addListButton.setAttribute('id', 'ui-list');
@@ -432,6 +561,7 @@
         var settingPopup = document.createElement('div');
         settingPopup.setAttribute('id', 'ui-setting');
         settingPopup.style.cssText = settingPopupCSS;
+        settingPopup.hidden = true;
 
         var settingPopupContent = document.createElement('div');
         settingPopupContent.setAttribute('id', 'ui-setting-content');
@@ -456,6 +586,7 @@
                 uiButton.style.opacity = "1";
                 uiButton.style.cursor = "pointer";
                 settingPopupContent.hidden = true;
+                settingPopup.hidden = true;
             }, 150);
             //uiButton.style.display = "flex";
 
@@ -1810,8 +1941,6 @@
         var maxPage;
         var rand;
         checkForAutoScan();
-        await checkUpdate();
-        if(debug){console.log("[INi] - Prüfen auf Updates")};
         loadSettings();
         await saveCurrentPage();
         if(debug){console.log("[INi] - Aktuelle Seite gespeichert")};
@@ -1827,6 +1956,8 @@
         //if(debug){console.log("[INi] - Tool Bar Initialisiert")};
         await createUI();
         if(debug){console.log("[INi] - Overlay geladen")};
+        await updateMessage();
+        if(debug){console.log("[INi] - Prüfen auf Updates")};
         //await openPopup();
         if(debug){console.log("[INi] - Popup Initialisiert")};
         await highlightCachedProducts();
