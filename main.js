@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         [BETA] AVV - Update Check
 // @namespace    http://tampermonkey.net/
-// @version      Beta-1.0
+// @version      Beta-1.1
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -15,23 +15,57 @@
 
 (function() {
     'use strict';
+    //####################################################################
+
+    //                              Settings
+
+    //####################################################################
+
+    // Debug Modus
+    // Beim Debug wird die Version automatisch auf 0.0 gesetzt
+    // true = Debug ausgabe in der Konsole des Brwosers
+    // false = Keine Ausgabe
     var debug = false;
-    var redirectMinTime = 2;
-    var redirectMaxTime = 5;
+
+    // Angabe der Zeit die beim Auto Scan mindestens mit der Weiterleitung gewartet werden soll
+    var redirectMinTime = 2; // Angabe in Sekunden
+
+    // Angabe der Zeit die beim Auto Scan maximal mit der Weiterleitung gewartet werden soll
+    var redirectMaxTime = 5; // Angabe in Sekunden
+
+    // Angabe der Zeit wie lange die Meldung eines Updates angezeigt werden soll
+    var updateMessageDuration = 15; // Angabe in Sekunden
+
+
+    //####################################################################
+
+    //                    Dont change anything below this
+
+    //####################################################################
     var url;
     var allData;
     let redirectTimeout;
     var addDate;
     var openList = false;
     var popupDefaultCount;
+    //##################################################
+    // Der Wert darf nicht unter 24 Stunden gesetzt werden!
+    // Vorgabe von Greasy Fork!
     var updateCheckInterval = 24; // Angabe in Stunden
-    var updateMessageDuration = 15; // Angabe in Sekunden
+    //##################################################
     var updateerror;
     var scriptURL = "https://greasyfork.org/de/scripts/471094";
+    var lastUpdateCheck;
 
-    //Menü Elements
+    //Einstellungen der IndexedDB
+    const dbName = "VineData";
+    const dbVersion = 1;
+    const objectStoreName = "Products";
+
+    // Einstellungs Menü Optionen
     const id = [
-        //[ID,Label]
+        // Aktuell nur color und checkbox als Type unterstützt
+        //[ID,Label,Type]
         ["colorHighlight","Highlight Farbe","color"],
         ["toggleHighlight","Ausblenden","checkbox"],
         ["toggleScan","Nur Sichtbares Cachen","checkbox"],
@@ -59,6 +93,7 @@
     transition: opacity 0.2s, bottom 0.2s ease 0s;
     `;
 
+    // CSS UI List Button
     var uiListCSS = `
     position: fixed;
     left: 10px;
@@ -81,6 +116,7 @@
     font-size: 1.75vh;
     `
 
+    //CSS Settings Menu
     var settingPopupCSS = `
     position: fixed;
     left: 10px;
@@ -183,57 +219,6 @@
     padding: 0 10px;
     `
 
-    // CSS für die grüne Leiste
-    var greenBarCSS = `
-  /* position: fixed; */
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 20px;
-  background-color: green;
-  color: white;
-  font-weight: bold;
-  z-index: 9999; /* erhöhter z-index für die grüne Leiste */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-left: 10px;
-  padding-right: 10px;
-  `;
-
-    // CSS für den Schalter
-    var toggleSwitchCSS = `
-    height: 13px !important;
-    width: 13px !important;
-    vertical-align: middle !important;
-    position: static !important;
-    bottom: 0 !important;
-    margin-left: 10px;
-
-`;
-
-    // CSS für den Schalter
-    var ScanPageInputCSS = `
-    height: 100% !important;
-    width: 60px !important;
-    vertical-align: middle !important;
-    position: static !important;
-    bottom: 0 !important;
-    margin-left: 10px;
-
-`;
-
-    // CSS für den Button zum Löschen der Daten
-    var deleteButtonCSS = `
-    height: 20px;
-    line-height: 20px;
-    padding: 0 10px;
-    background-color: transparent;
-    border: none;
-    color: white;
-    cursor: pointer;
-    `;
-
     // CSS für den Button zum Löschen der Daten
     var updateButtonCSS = `
     height: 20px;
@@ -280,200 +265,10 @@
     width: 10%
     `;
 
+    // CSS für die Favoriten
     var favElementCSShighlighted = `
     color: yellow;
     `;
-
-    //Einstellungen der IndexedDB
-    const dbName = "VineData";
-    const dbVersion = 1;
-    const objectStoreName = "Products";
-
-    async function checkUpdate(){
-        if(debug){console.log("Prüfe auf Updates")};
-        var lastUpdateCheck = localStorage.getItem("lastUpdateCheck");
-        if(lastUpdateCheck == null){
-            localStorage.setItem("lastUpdateCheck",Date());
-            lastUpdateCheck = new Date();
-        }
-        var lastUpdateCheckObj = new Date(lastUpdateCheck)
-        var lastUpdateCheckDiff = ((new Date() - lastUpdateCheckObj) / (1000 * 60 * 60));
-        var lastUpdateCheckLog = new Date(lastUpdateCheck).toLocaleString('de-DE', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-        console.log("Letzte Überprüfung auf Updates: " + lastUpdateCheckLog);
-        if(updateCheckInterval <= lastUpdateCheckDiff){
-            localStorage.setItem("lastUpdateCheck",Date());
-            try{
-                var version = await getVersion();
-                //var version = "0.9";
-
-                //GreasyFork.getScriptData('471094').then(data => {
-                //    console.log(data)
-                //});
-
-                if(GM_info?.script?.version != version){
-                    console.log("Version " + version + " verfügbar");
-                    localStorage.setItem("updateAvailable", true);
-                    return true;
-                }else{
-                    console.log("Aktuellste Version installiert");
-                    localStorage.setItem("updateAvailable", false);
-                    return false;
-                }
-            } catch (error) {
-                updateerror = error;
-                console.log("Es gab einen Fehler bei der Versions Abfrage");
-                console.log("Fehler: " + error);
-                return "error";
-            }
-        }else{
-            if(debug){
-                console.log("Intervall zu gering. Prüfen auf Updates erfolgen nur 1x am Tag.");
-            }
-            var nextUpdateCheck = new Date(lastUpdateCheckObj.getTime() + (updateCheckInterval * 60 * 60 * 1000));
-            var nextUpdateCheckLog = new Date(nextUpdateCheck).toLocaleString('de-DE', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-            console.log("Nächste Überprüfung Erfolgt: " + nextUpdateCheckLog);
-            return "intervall"
-        }
-    }
-
-    async function getVersion(){
-        return new Promise((res, rej) => {
-			GM.xmlHttpRequest({
-				url: `https://greasyfork.org/scripts/471094.json`,
-				onload: response => {
-					const data = JSON.parse(response.responseText)
-
-					return res(data["version"])
-				},
-				onerror: err => {
-					return rej(err)
-				}
-			})
-		})
-    }
-
-    async function updateMessage() {
-        var msg;
-        var updateMessageDiv = document.createElement('div');
-        updateMessageDiv.style.cssText = updateMessageDivCSS;
-        updateMessageDiv.setAttribute('id', 'ui-update');
-        updateMessageDiv.hidden = true;
-
-        var updateMessageContent = document.createElement('div');
-        updateMessageContent.style.cssText = updateMessageContentCSS;
-
-        updateMessageDiv.appendChild(updateMessageContent);
-
-        switch(await checkUpdate()) {
-            // Update verfügbar
-            case true:
-                var version = await getVersion();
-                localStorage.setItem("newVersion", version);
-                msg = "Version " + version + " verfügbar";
-                message(msg);
-                updateMessageContent.addEventListener('click', function() {
-                    window.open(scriptURL, "_blank");
-                });
-                break;
-            // Kein Update verfügbar
-            case false:
-                break;
-            // Prüfung bereits stattgefunden
-            case "intervall":
-                version = localStorage.getItem("newVersion");
-                if(GM_info?.script?.version != version){
-                    console.log("Neue Version vorhanden, intervall nicht abgelaufen, lade aus Local");
-                    msg = "Version " + version + " verfügbar";
-                    message(msg);
-                    updateMessageContent.addEventListener('click', function() {
-                        window.open(scriptURL, "_blank");
-                    });
-                }
-                break;
-                // Fehler bei der Abfrage
-            case "error":
-                msg = "Fehler Überprüfen von Updates";
-                message(msg);
-                updateMessageContent.addEventListener('click', function() {
-                    alert("Error: " + updateerror);
-                });
-                break;
-        }
-        function message(msg){
-            updateMessageContent.textContent = msg
-            document.body.prepend(updateMessageDiv);
-
-            setTimeout(() => {
-                updateMessageDiv.style.display = "flex";
-                setTimeout(() => {
-                    var uiSetting = document.getElementById('ui-setting');
-                    var uiButton = document.getElementById('ui-button');
-                    var uiList = document.getElementById('ui-list');
-                    var uiUpdate = document.getElementById('ui-update');
-                    uiList.style.bottom = "90px";
-                    uiButton.style.bottom = "50px";
-                    uiSetting.style.bottom = "50px";
-                    updateMessageDiv.hidden = false;
-                    //updateMessageDiv.style.display = "flex";
-                    updateMessageDiv.style.cursor = "pointer";
-                    updateMessageDiv.style.height = "30px";
-                    updateMessageDiv.style.opacity = "1";
-                }, 200);
-            }, 100);
-
-            //Meldung ausblenden nach x Sekunden
-            setTimeout(() => {
-                var uiSetting = document.getElementById('ui-setting');
-                var uiButton = document.getElementById('ui-button');
-                var uiList = document.getElementById('ui-list');
-                var uiUpdate = document.getElementById('ui-update');
-                uiList.style.bottom = "50px";
-                uiButton.style.bottom = "10px";
-                uiSetting.style.bottom = "10px";
-                updateMessageDiv.hidden = true;
-                updateMessageDiv.style.height = "0px";
-                updateMessageDiv.style.opacity = "0";
-                setTimeout(() => {
-                    updateMessageDiv.style.display = "none";
-                }, 200);
-            }, (updateMessageDuration * 1000));
-            //GM.openInTab("https://greasyfork.org/de/scripts/471094-beta-amazon-vine-viewer");
-        }
-    }
-
-    // Verbindungsaufbau zur Datenbank
-
-    const request = indexedDB.open(dbName, dbVersion);
-
-    request.onerror = function(event) {
-        console.log("Fehler beim Öffnen der Datenbank");
-    };
-
-    request.onsuccess = function(event) {
-        console.log("Verbindung zur Datenbank hergestellt");
-        main();
-    };
-
-    // Falls neue Version von Datenbank vorhanden
-    request.onupgradeneeded = function(event) {
-        const db = event.target.result;
-        const objectStore = db.createObjectStore(objectStoreName, { keyPath: "ID" });
-        console.log("Problem mit der Datenbank");
-    };
 
     // Laden der Einstellungen
     async function loadSettings(){
@@ -513,88 +308,323 @@
         }else{
             popupDefaultCount = parseInt(localStorage.getItem("popupDefaultCount"));
         }
+        if(localStorage.getItem("lastUpdateCheck") == null){
+            localStorage.setItem("lastUpdateCheck",Date());
+            lastUpdateCheck = new Date();
+        }else{
+            lastUpdateCheck = localStorage.getItem("lastUpdateCheck");
+        }
 
     }
 
-    // Funktion zum Erstellen der grünen Leiste
+    // Überprüft ob ein Update verfügbar ist. Der Check wird Standartmäßig nur alle 24 Stunden durchgeführt.
+    async function checkUpdate(){
+        if(debug){console.log("Prüfe auf Updates")};
+        // Wert aus Speicher in ein Datum Objekt konvertieren
+        var lastUpdateCheckObj = new Date(lastUpdateCheck)
+        // Errechnung der verbleibenen Zeit zwischen jetzt und letzer Prüfung
+        var lastUpdateCheckDiff = ((new Date() - lastUpdateCheckObj) / (1000 * 60 * 60));
+        // Konvertieren des Datums in ein lesbares Format
+        var lastUpdateCheckLog = new Date(lastUpdateCheck).toLocaleString('de-DE', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        if(debug){console.log("Letzte Überprüfung auf Updates: " + lastUpdateCheckLog);};
+        // Überprüfen ob Timeout zwischen den Überprüfungen abgelaufen ist
+        if(updateCheckInterval <= lastUpdateCheckDiff){
+            // Setzte das Datum der letzten Überprüfung auf jetzt
+            localStorage.setItem("lastUpdateCheck",Date());
+            try{
+                // Abfrage der Version
+                var version = await getVersion();
+                // Überprüfung ob die Installierte Verion die gleiche Version auf GreasyFork ist
+                if(GM_info?.script?.version != version){
+                    if(debug){console.log("Version " + version + " verfügbar");};
+                    // Lokal Speichern das ein Update verfügbar ist
+                    localStorage.setItem("updateAvailable", true);
+                    localStorage.setItem("newVersion", version);
+                    return true;
+                }else{
+                    // Lokal Speichern das kein Update verfügbar ist
+                    console.log("Aktuellste Version installiert");
+                    localStorage.setItem("updateAvailable", false);
+                    return false;
+                }
+            } catch (error) {
+                // Ausgabe des Fehlers bei der Abfrage des Updates
+                updateerror = error;
+                console.log("Es gab einen Fehler bei der Versions Abfrage");
+                console.log("Fehler: " + error);
+                return "error";
+            }
+        }else{
+            if(debug){
+                console.log("Intervall zu gering. Prüfen auf Updates erfolgen nur 1x am Tag.");
+            }
+            // Angabe wann das nächste Update durchgeführt werden kann
+            var nextUpdateCheck = new Date(lastUpdateCheckObj.getTime() + (updateCheckInterval * 60 * 60 * 1000));
+            var nextUpdateCheckLog = new Date(nextUpdateCheck).toLocaleString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            if(debug){console.log("Nächste Überprüfung Erfolgt: " + nextUpdateCheckLog);};
+            return "intervall"
+        }
+    }
+
+    // Abfrage der Version von Greasyfork
+    async function getVersion(){
+        return new Promise((res, rej) => {
+            GM.xmlHttpRequest({
+                url: `https://greasyfork.org/scripts/471094.json`,
+                onload: response => {
+                    const data = JSON.parse(response.responseText)
+                    // Wenn Debug aktiv wird der Wert auf 0.0 gesetzt, um die Update Funktion zu testen
+                    if(debug){
+                        return "0.0"
+                    } else {
+                        return res(data["version"])
+                    };
+                },
+                onerror: err => {
+                    return rej(err)
+                }
+            })
+        })
+    }
+
+    // Erzeugen der Updatemeldung
+    async function updateMessage() {
+        var msg;
+
+        // Update Div erstellen
+        var updateMessageDiv = document.createElement('div');
+        updateMessageDiv.style.cssText = updateMessageDivCSS;
+        updateMessageDiv.setAttribute('id', 'ui-update');
+        updateMessageDiv.hidden = true;
+
+        // Content Div des Update Divs erstellen
+        var updateMessageContent = document.createElement('div');
+        updateMessageContent.style.cssText = updateMessageContentCSS;
+
+        // Content Div dem Update Div als Child hinzufügen
+        updateMessageDiv.appendChild(updateMessageContent);
+
+        // Abfrage einer neuer Version
+        switch(await checkUpdate()) {
+                // Update verfügbar
+            case true:
+                var version = localStorage.getItem("newVersion");
+                msg = "Version " + version + " verfügbar";
+                message(msg);
+                updateMessageContent.addEventListener('click', function() {
+                    window.open(scriptURL, "_blank");
+                });
+                break;
+                // Kein Update verfügbar
+            case false:
+                break;
+                // Intervall noch nicht abgelaufen
+            case "intervall":
+                version = localStorage.getItem("newVersion");
+                // Installierte Verion weicht von neuer Version ab
+                if(GM_info?.script?.version != version){
+                    if(debug){console.log("Neue Version vorhanden, intervall nicht abgelaufen, lade aus Local");};
+                    // Erzeugung der Meldung
+                    msg = "Version " + version + " verfügbar";
+                    message(msg);
+                    updateMessageContent.addEventListener('click', function() {
+                        window.open(scriptURL, "_blank");
+                    });
+                }
+                break;
+                // Fehler bei der Abfrage
+            case "error":
+                msg = "Fehler Überprüfen von Updates";
+                message(msg);
+                updateMessageContent.addEventListener('click', function() {
+                    alert("Error: " + updateerror);
+                });
+                break;
+        }
+
+        // Ein / Ausblenden der Nachricht
+        function message(msg){
+            // Setzten des Textes
+            updateMessageContent.textContent = msg
+
+            // Hinzufügen des Elementes zur Seite
+            document.body.prepend(updateMessageDiv);
+
+            // Verzögerung bevor die Nachricht
+            setTimeout(() => {
+                // Nachricht aktivieren mit Flex
+                updateMessageDiv.style.display = "flex";
+                // Anzeigen der Nachricht mit einer kurzen verzögerung
+                setTimeout(() => {
+                    var uiSetting = document.getElementById('ui-setting');
+                    var uiButton = document.getElementById('ui-button');
+                    var uiList = document.getElementById('ui-list');
+                    var uiUpdate = document.getElementById('ui-update');
+                    uiList.style.bottom = "90px";
+                    uiButton.style.bottom = "50px";
+                    uiSetting.style.bottom = "50px";
+                    updateMessageDiv.hidden = false;
+                    //updateMessageDiv.style.display = "flex";
+                    updateMessageDiv.style.cursor = "pointer";
+                    updateMessageDiv.style.height = "30px";
+                    updateMessageDiv.style.opacity = "1";
+                }, 200);
+            }, 100);
+
+            //Meldung ausblenden nach x Sekunden | Dauer der Einblendungen kann in den Einstellungen geändert werden
+            setTimeout(() => {
+                var uiSetting = document.getElementById('ui-setting');
+                var uiButton = document.getElementById('ui-button');
+                var uiList = document.getElementById('ui-list');
+                var uiUpdate = document.getElementById('ui-update');
+                uiList.style.bottom = "50px";
+                uiButton.style.bottom = "10px";
+                uiSetting.style.bottom = "10px";
+                updateMessageDiv.hidden = true;
+                updateMessageDiv.style.height = "0px";
+                updateMessageDiv.style.opacity = "0";
+                // 200ms (Zeit Animation) Warten bis die Nachricht ausgeblendet wird
+                setTimeout(() => {
+                    updateMessageDiv.style.display = "none";
+                }, 200);
+            }, (updateMessageDuration * 1000));
+        }
+    }
+
+    // Verbindungsaufbau zur Datenbank
+    const request = indexedDB.open(dbName, dbVersion);
+
+    // Fehler Verbindung Datenbank
+    request.onerror = function(event) {
+        console.log("Fehler beim Öffnen der Datenbank");
+    };
+
+    // Verbindung erfolgreich
+    request.onsuccess = function(event) {
+        console.log("Verbindung zur Datenbank hergestellt");
+        main();
+    };
+
+    // Falls neue Version von Datenbank vorhanden
+    request.onupgradeneeded = function(event) {
+        const db = event.target.result;
+        const objectStore = db.createObjectStore(objectStoreName, { keyPath: "ID" });
+        console.log("Problem mit der Datenbank");
+    };
+
+    // Funktion zum Erstellen des UI
     async function createUI(){
+        // Logo anstelle des Zahnrades
         var uiIMGurl = "https://m.media-amazon.com/images/G/01/vine/website/vine_logo_title._CB1556578328_.png";
 
+        // Erstellung des Buttons der Einstellungen
         var addSettingsUIButton = document.createElement('div');
         addSettingsUIButton.setAttribute('id', 'ui-button');
         addSettingsUIButton.style.cssText = uiSettingCSS;
+        // Click Event Einstellungs Button
         addSettingsUIButton.addEventListener('click', function() {
-            //addSettingsUIButton.style.display = "none";
+            // Erfassen der Elemente
             var settingPopup = document.getElementById('ui-setting');
             var settingPopupContent = document.getElementById('ui-setting-content');
             var uiList = document.getElementById('ui-list');
+            // Standartmäßige Elemente Einblenden
             settingPopup.hidden = false;
             settingPopupContent.hidden = false;
+            //addSettingsUIButton.hidden = true; // Deaktiviert -> Überarbeitung UI
+            // Inhalt der Einstellungen erst Anzeigen nach der Animation
             setTimeout(() => {
                 settingPopupContent.style.opacity = "1";
-            },200);
-            //            settingPopupContent.style.opacity = "1";
+            },200); // 200ms Animationszeit
+            // CSS Werte Höhe / Breite Einstellungsfenster
             settingPopup.style.display = "flex";
             settingPopup.style.width = "250px";
             settingPopup.style.height = "300px";
+            // Button für die Liste der Produkte (Wert = höhe Einstellungsfenster + 20px)
             uiList.style.bottom = "320px";
             addSettingsUIButton.style.opacity = "0";
             addSettingsUIButton.style.cursor = "default";
 
         });
 
+        // Erstellen des Bild Elementes
         var addUIIMG = document.createElement('img');
         addUIIMG.setAttribute('src' , uiIMGurl);
 
+        // Inhalt des Einstellungsbuttons erstellen
         var addButtonContent = document.createElement('span');
         addButtonContent.textContent = '⚙️';
         addButtonContent.style.cssText = uiButtonContentCSS;
 
-        //addSettingsUIButton.appendChild(addUIIMG);
+        // Hinzufügen des Einstellung Buttons zur Website
+        //addSettingsUIButton.appendChild(addUIIMG); // Hinzufügen des Vine Logos -> Deaktiviert, überarbeitung??
         addSettingsUIButton.appendChild(addButtonContent);
         document.body.prepend(addSettingsUIButton);
 
+        // Aufrufen der Funktion zum erstellen des Inhaltes des Einstellungsfensters
         createsettingPopup();
 
+        // Erstellen des Elementes für die Produktliste
         var addListButton = document.createElement("div");
         addListButton.setAttribute('id', 'ui-list');
         addListButton.style.cssText = uiListCSS;
 
+        // Click Event der Produktliste
         addListButton.addEventListener('click', function() {
+            // Funktion aufrufen zum erstellen der Produktliste
             createPopup();
         });
 
+        // Inhalt des Produktlisten Buttons erstellen
         var addListButtonContent = document.createElement('span');
         addListButtonContent.textContent = '📋';
         addListButtonContent.style.cssText = uiButtonContentCSS;
 
+        // Hinzufügen des Produktlisten Buttons zur Website
         addListButton.appendChild(addListButtonContent);
         document.body.prepend(addListButton);
-
     }
 
+    // Erstellen des Einstellungen Menüs
     async function createsettingPopup(){
 
+        // Div Element der Einstellungen öffnen
         var settingPopup = document.createElement('div');
         settingPopup.setAttribute('id', 'ui-setting');
         settingPopup.style.cssText = settingPopupCSS;
-        settingPopup.hidden = true;
+        settingPopup.hidden = true; // Einstellungen beim laden der Seite verstecken
 
+        // Div für den Inhalt erstellen
         var settingPopupContent = document.createElement('div');
         settingPopupContent.setAttribute('id', 'ui-setting-content');
         settingPopupContent.style.cssText = settingPopupContentCSS;
         settingPopupContent.hidden = true;
 
+        // Div für den Schließen Button erstellen
         var closeButton = document.createElement('div');
         closeButton.style.cssText = settingPopupCloseButton;
 
+        // Inhalt des Schließen Buttons erstellen
         var closeButtonContent = document.createElement('span');
         closeButtonContent.textContent = 'X';
         closeButtonContent.addEventListener('click', function() {
             // Close Setting Popup
             var uiList = document.getElementById('ui-list');
             settingPopupContent.style.opacity = "0";
-            //settingPopup.style.display = "none";
+            // rücksetzten der Werte nach ablaufn der Animation
             setTimeout(() => {
                 var uiButton = document.getElementById('ui-button');
                 uiList.style.bottom = "50px";
@@ -604,335 +634,158 @@
                 uiButton.style.cursor = "pointer";
                 settingPopupContent.hidden = true;
                 settingPopup.hidden = true;
-            }, 150);
-            //uiButton.style.display = "flex";
-
-            // ID ui-setting-content hide
-
+            }, 150); // 150ms -> Animationszeit Opacity
         });
 
+        // Titel Div erstellen
         var titleDiv = document.createElement("div");
         titleDiv.style.cssText = titleDivCSS;
 
+        // Titel Inhalt erstellen
         var titleDivContent = document.createElement("span");
         titleDivContent.style.cssText = titleDivContentCSS;
         titleDivContent.textContent = "VineViewer Einstellungen"
 
+        // Div für den Einstellungsbereich erstellen
         var itemsDiv = document.createElement("div");
         itemsDiv.style.cssText = settingPopupItemListCSS
 
-        //var itemDiv = document.createElement("div");
-        //itemDiv.style.cssText = settingPopupItemCSS
-
-        //var itemLeftDiv = document.createElement("div");
-        //itemLeftDiv.style.cssText = settingPopupItemLeftCSS
-
-        ////Checkbox Ausblenden
-        //var toggleSwitch = document.createElement('input');
-        //toggleSwitch.setAttribute('type', 'checkbox');
-        //toggleSwitch.setAttribute('id', 'togglehide');
-        //toggleSwitch.style.bottom = "0px"
-        //if(await getHighlightVisibility()){
-        //    toggleSwitch.setAttribute('checked', 'true');
-        //}
-        //toggleSwitch.addEventListener('change', function() {
-        //    toggleHighlightVisibility(this.checked);
-        //    saveHighlightVisibility(this.checked);
-        //});
-        //
-        //var itemRightDiv = document.createElement("div");
-        //itemRightDiv.style.cssText = settingPopupItemRightCSS
-        //
-        ////Label Ausblenden
-        //var toggleLabel = document.createElement('label');
-        //toggleLabel.textContent = 'Ausblenden';
-        //toggleLabel.setAttribute('for', 'togglehide');
-        //
-        //
-        //// Toggle Nur sichtbares Cachen
-        //var toggleScanSwitch = document.createElement('input');
-        //toggleScanSwitch.setAttribute('type', 'checkbox');
-        //toggleScanSwitch.style.cssText = toggleSwitchCSS;
-        //if(await getScanVisibility()){
-        //    toggleSwitch.setAttribute('checked', 'true');
-        //}
-        //toggleScanSwitch.addEventListener('change', function() {
-        //    toggleScanVisibility(this.checked);
-        //    saveScanVisibility(this.checked);
-        //});
-        //
-        //var toggleScanLabel = document.createElement('label');
-        //toggleScanLabel.textContent = 'Nur Sichtbares Cachen';
-        //toggleScanLabel.style.marginLeft = '5px';
-        //toggleScanLabel.style.userSelect = 'none';
-
+        // Funktion zum erstellen der Einstellungen
         async function addItem(ItemID){
+            // Laden der Einstellungsoptionen aus der Liste (Einstellungsbereich)
             var ItemUID = id[ItemID][0];
             var titel = id[ItemID][1];
             var type = id[ItemID][2];
+
+            // Erstellung des Containers für die Einstellungen
             var itemDiv = document.createElement("div");
             itemDiv.style.cssText = settingPopupItemCSS;
 
+            // Linke Spalte der Einstellungen für den Input
             var itemLeftDiv = document.createElement("div");
             itemLeftDiv.style.cssText = settingPopupItemLeftCSS;
 
+            // Rechte Spalte der Einstellungen für die Bezeichnung
             var itemRightDiv = document.createElement("div");
             itemRightDiv.style.cssText = settingPopupItemRightCSS;
 
-            // Erstellen der Checkbox
+            // Erstellung der Inputs
             var toggleSwitch = document.createElement('input');
+            // type geladen aus der Liste
             toggleSwitch.setAttribute('type', type);
             toggleSwitch.setAttribute('id', ItemUID);
             toggleSwitch.style.bottom = "0px";
             toggleSwitch.setAttribute('value', "#FFFFFF");
+            // Status auf Gespeicherten Wert setzten
             if(await getToggleStatus(ItemUID) && type == "checkbox"){
                 toggleSwitch.setAttribute('checked', 'true');
             }else if(type == "color"){
                 var value = await getColorStatus(ItemUID);
                 toggleSwitch.setAttribute('value', value);
+                // Sonder CSS Einstellungen für Color Input
                 toggleSwitch.style.width = "22px";
                 toggleSwitch.style.height = "22px";
             }
+            // Event Listener für äderungen in den Einstellungen
             toggleSwitch.addEventListener('change', function() {
                 switch(type){
                     case "checkbox":
+                        // Aufrufen und weitergabe des Status
                         settingsClickEvent(ItemUID, this.checked);
+                        // Speichern des neuen Wertes
                         saveToggleStatus(ItemUID, this.checked);
                         break;
                     case "color":
+                        // Aufrufen und weitergabe des Wertes
                         settingsClickEvent(ItemUID, this.value);
+                        // Speichern des neuen Wertes
                         saveColorStatus(ItemUID, this.value);
                         break;
 
                 }
             });
 
-            // Erstellen des Labels
+            // Beschreibung der Einstellungsoption hinzufügen
             var toggleLabel = document.createElement('label');
             toggleLabel.textContent = titel;
             toggleLabel.setAttribute('for', ItemUID);
 
+            // Input und Label dem rechten / linken Div hinzufügen
             itemLeftDiv.appendChild(toggleSwitch);
             itemRightDiv.appendChild(toggleLabel);
+
+            // Linke / Rechte Seite dem Einstellungsdiv hinzufügen
             itemDiv.appendChild(itemLeftDiv);
             itemDiv.appendChild(itemRightDiv);
+
+            // Gibt ein Einstellungselement zurück
             return itemDiv;
         }
 
+        // Ausführen für jeden Einstrag in der Liste
         for(var x = 0 ; x < id.length; x++){
+            // Erzeugen der Option
             var Item = await addItem(x);
+            // hinzufügen der Option ins Einstellungsfenster
             itemsDiv.appendChild(Item);
         }
 
-
+        // Elemente dem Einstellungsfenster hinzufügen
         closeButton.appendChild(closeButtonContent);
         titleDiv.appendChild(titleDivContent);
         settingPopupContent.appendChild(titleDiv);
 
-        // Hinzufügen der Hide Toggle
-        //itemLeftDiv.appendChild(toggleSwitch);
-        //itemDiv.appendChild(itemLeftDiv);
-        //itemRightDiv.appendChild(toggleLabel);
-        //itemDiv.appendChild(itemRightDiv);
-
-        // hinzufügen des Scan Toggles
-        //itemLeftDiv.appendChild(toggleScanSwitch);
-        //itemDiv.appendChild(itemLeftDiv);
-        //itemRightDiv.appendChild(toggleScanLabel);
-        //itemDiv.appendChild(itemRightDiv);
-        //itemsDiv.appendChild(itemDiv);
-
+        // Container Alle Daten löschen Button erstellen
         var buttonDeleteDataDiv = document.createElement('div');
-        //buttonDeleteDiv.style.
 
+        // Button Daten löschen erstellen
         var buttonDeleteData = document.createElement('button');
+        // Aufrufen der Funktion zur Angabe der Daten in der Datenbank
         var cachedProductsCount = await getProductCacheLength();
         buttonDeleteData.textContent = cachedProductsCount + ' Daten löschen';
         buttonDeleteData.style.margin = "13px";
+        // Click Event für den Delete Button
         buttonDeleteData.addEventListener('click', function() {
+            // Sicherheitsabfrage ob wirklich alle Daten gelöscht werden sollen
             var confirmation = confirm('Möchten Sie wirklich alle Daten löschen?');
             if (confirmation) {
+                // Wenn auf OK gedrückt Funktion aufrufen um Daten zu löschen
                 clearCachedData();
             }
         });
 
+        // Delete Button dem Container hinzufügen
         buttonDeleteDataDiv.appendChild(buttonDeleteData);
+
+        // Hinzufügen des Containers in die Einstellungsübersicht
         itemsDiv.appendChild(buttonDeleteDataDiv);
 
+        // Erstellen des Footer Containers
         var settingFooter = document.createElement("div");
         settingFooter.style.cssText = settingFooterCSS;
 
+        // Erstellung der Footer Verlinkung
         var footerVersionLink = document.createElement("a");
         footerVersionLink.textContent = 'Version: ' + GM_info?.script?.version;
-        footerVersionLink.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
+        footerVersionLink.href = scriptURL;
         footerVersionLink.target = "_blank"
         footerVersionLink.style.textDecoration = "none"
         footerVersionLink.style.color = "inherit"
-
+        
+        // Footer Verlinkung dem Footer Container hinzufügen
         settingFooter.appendChild(footerVersionLink);
-
+        
+        // Erstellung des Einstellungen Fensters
         settingPopupContent.appendChild(itemsDiv);
         settingPopupContent.appendChild(closeButton);
         settingPopupContent.appendChild(settingFooter);
+        // Inhalt dem Einstellungs Container hinzufügen
         settingPopup.appendChild(settingPopupContent);
+        // Einstellungsfenster der Website hinzufügen
         document.body.prepend(settingPopup);
     }
-
-
-    async function createGreenBar() {
-        var greenBar = document.createElement('div');
-        greenBar.setAttribute('id', 'green-bar');
-        greenBar.style.cssText = greenBarCSS;
-
-        var toggleDiv = document.createElement('div');
-        toggleDiv.style.display = 'flex';
-        toggleDiv.style.alignItems = 'center';
-
-        //        var toggleSwitch = document.createElement('input');
-        //        toggleSwitch.setAttribute('type', 'checkbox');
-        //        toggleSwitch.style.cssText = toggleSwitchCSS;
-        //        toggleSwitch.addEventListener('change', function() {
-        //            //toggleHighlightVisibility(this.checked);
-        //            //saveHighlightVisibility(this.checked);
-        //        });
-        //
-        //        var toggleLabel = document.createElement('label');
-        //        toggleLabel.textContent = 'Ausblenden';
-        //        toggleLabel.style.marginLeft = '5px';
-        //        toggleLabel.style.userSelect = 'none';
-        //
-        //        //toggleDiv.appendChild(toggleSwitch);
-        //        //toggleDiv.appendChild(toggleLabel);
-        //
-        //        var toggleScanSwitch = document.createElement('input');
-        //        toggleScanSwitch.setAttribute('type', 'checkbox');
-        //        toggleScanSwitch.style.cssText = toggleSwitchCSS;
-        //        toggleScanSwitch.addEventListener('change', function() {
-        //            //toggleScanVisibility(this.checked);
-        //            //saveScanVisibility(this.checked);
-        //        });
-        //
-        //        var toggleScanLabel = document.createElement('label');
-        //        toggleScanLabel.textContent = 'Nur Sichtbares Cachen';
-        //        toggleScanLabel.style.marginLeft = '5px';
-        //        toggleScanLabel.style.userSelect = 'none';
-        //
-        //        toggleDiv.appendChild(toggleScanSwitch);
-        //        toggleDiv.appendChild(toggleScanLabel);
-        //
-        var ScanPageInput = document.createElement('input');
-        if(localStorage.getItem('scanToPage') != undefined){
-            var scanToPage = localStorage.getItem('scanToPage');
-        }else{
-            scanToPage = getMaxPage();
-        }
-        if(localStorage.getItem("autoScan")=="true"){
-            ScanPageInput.setAttribute('disabled' , 'true');
-        }
-        ScanPageInput.setAttribute('type', 'number');
-        ScanPageInput.setAttribute('maxlength', '3');
-        ScanPageInput.style.cssText = ScanPageInputCSS;
-        ScanPageInput.value = scanToPage;
-        ScanPageInput.addEventListener('change', function() {
-            console.log("Input");
-            var valid = checkScanPageInput(this.value);
-            if(!valid){
-                this.value = getMaxPage();
-            }
-        });
-
-
-        //var toggleScanLabel = document.createElement('label');
-        //toggleScanLabel.textContent = 'Nur Sichtbares Cachen';
-        //toggleScanLabel.style.marginLeft = '5px';
-        //toggleScanLabel.style.userSelect = 'none';
-        //
-        //toggleDiv.appendChild(toggleScanSwitch);
-        //toggleDiv.appendChild(toggleScanLabel);
-        //
-        //var ScanPageInput = document.createElement('input');
-        //if(localStorage.getItem('scanToPage') != undefined){
-        //    var scanToPage = localStorage.getItem('scanToPage');
-        //}else{
-        //    scanToPage = getMaxPage();
-        //}
-        //if(localStorage.getItem("autoScan")=="true"){
-        //    ScanPageInput.setAttribute('disabled' , 'true');
-        //}
-        //ScanPageInput.setAttribute('type', 'number');
-        //ScanPageInput.setAttribute('maxlength', '3');
-        //ScanPageInput.style.cssText = ScanPageInputCSS;
-        //ScanPageInput.value = scanToPage;
-        //ScanPageInput.addEventListener('change', function() {
-        //    console.log("Input");
-        //    var valid = checkScanPageInput(this.value);
-        //    if(!valid){
-        //        this.value = getMaxPage();
-        //    }
-        //});
-
-        var scanButton = document.createElement('button');
-        var buttonText = "Start Scan";
-        if(localStorage.getItem("autoScan")=="true"){
-            buttonText = "Stop Scan";
-        }
-        scanButton.textContent = buttonText;
-        scanButton.style.marginLeft = '10px';
-        scanButton.addEventListener('click', function() {
-            AutoScanStart(ScanPageInput.value);
-        });
-        toggleDiv.appendChild(ScanPageInput);
-        toggleDiv.appendChild(scanButton);
-
-        var titleDiv = document.createElement('div');
-        titleDiv.style.display = 'flex';
-        titleDiv.style.alignItems = 'center';
-
-        var title = document.createElement('span');
-        title.textContent = 'Amazon Vine viewer';
-        title.style.marginRight = '10px';
-
-        titleDiv.appendChild(title);
-
-        var buttonDiv = document.createElement('div');
-        buttonDiv.style.display = 'flex';
-        buttonDiv.style.alignItems = 'center';
-
-        //var versionButton = document.createElement('a');
-        //versionButton.textContent = 'Version: ' + GM_info?.script?.version + ' update?';
-        //versionButton.style.cssText = updateButtonCSS;
-        //versionButton.href = 'https://greasyfork.org/de/scripts/471094-amazon-vine-viewer';
-        //versionButton.target = '_blank';
-        //
-        //
-        //var deleteButton = document.createElement('button');
-        //var cachedProductsCount = allData.length;//
-        //deleteButton.textContent = cachedProductsCount + ' Daten löschen';
-        //deleteButton.style.cssText = deleteButtonCSS;
-        //deleteButton.addEventListener('click', function() {
-        //    var confirmation = confirm('Möchten Sie wirklich alle Daten löschen?');
-        //    if (confirmation) {
-        //        clearCachedData();
-        //    }
-        //});
-        //
-        //buttonDiv.appendChild(versionButton);
-        //buttonDiv.appendChild(deleteButton);
-
-        greenBar.appendChild(toggleDiv);
-        greenBar.appendChild(titleDiv);
-        greenBar.appendChild(buttonDiv);
-
-        document.body.prepend(greenBar);
-
-        var highlightVisibility = getToggleStatus("toggleHighlight");
-        //        toggleSwitch.checked = highlightVisibility;
-        toggleHighlightVisibility(highlightVisibility);
-
-        var scanVisibility = getToggleStatus("toggleScan");
-        //        toggleScanSwitch.checked = scanVisibility;
-    }
-
+    
+    // Auswertung der Click Events der Einstellungsoptionen || Umbau auf for schleife (id länge?)
     async function settingsClickEvent(ItemUID, value){
         switch (ItemUID){
             case "colorHighlight":
@@ -952,8 +805,8 @@
                 break;
         }
     }
-
-
+    
+    // Funktion zum anzeigen / Ausblenden des Datums
     function toggleDate(value) {
         const dateElements = document.querySelectorAll('[id="p-date"]');
         dateElements.forEach(function(element){
@@ -964,17 +817,20 @@
             }
         });
     }
-
+    
+    // Funktion zum ausblenden / anzeigen der Amazon Empfehlen (nähe Footer)
     function toggleRecommendations(value) {
         const recom = document.getElementById('rhf');
         recom.hidden = value;
     }
-
+    
+    // Funktion zum ausblenden des Footers
     function toggleFooter(value){
         const footer = document.getElementById('navFooter');
         footer.hidden = value;
     }
-
+    
+    // Überprüfen ob der Wert des Auto Scan valide ist -> Aktuell keine Verwendung, Funktion wird ggf. später wieder hinzugefügt
     function checkScanPageInput(value) {
         var maxPage = getMaxPage();
         if(value > maxPage){
@@ -985,7 +841,7 @@
         console.log("Eingabe: " + value);
     }
 
-    // Funktion zum Ein- oder Ausblenden der hervorgehobenen Divs
+    // Funktion zum ein / ausblenden der Hintergrundfarbe der Produkte
     function toggleHighlightVisibility(checked) {
         var highlightedDivs = document.getElementsByClassName('highlighted');
 
@@ -995,54 +851,28 @@
         }
     }
 
-    // Funktion zum Abfragen des Toggle Status
+    // Funktion zum Speichern des Toggle Status der Einstellungen
     function saveToggleStatus(ItemUID, value){
         localStorage.setItem(ItemUID, value);
     }
-
+    
+    // Funktion zum Abfragen der Einstellungen aus dem Lokalen Speicher
     function getToggleStatus(ItemUID){
         const toggleStatus = localStorage.getItem(ItemUID);
         return toggleStatus === 'true';
     }
 
-    // Funktion zum Abfragen des Toggle Status
+    // Funktion zum Speichern der Farbe im Einstellungsmenü
     function saveColorStatus(ItemUID, value){
         localStorage.setItem(ItemUID, value);
     }
-
+    
+    // Funktion zum Abrufen der Farbe im Einstellungsmenü aus dem Lokalen Speicher
     function getColorStatus(ItemUID){
         const value = localStorage.getItem(ItemUID);
         return value;
     }
-
-    //##################################### OLD CODE #####################################
-    // Funktion??
-    function toggleScanVisibility(checked) {
-        //var highlightedDivs = document.getElementsByClassName('highlighted');
-
-        //for (var i = 0; i < highlightedDivs.length; i++) {
-        //  var div = highlightedDivs[i];
-        //div.style.display = checked ? 'none' : 'block';
-        //}
-    }
-
-    // Funktion zum Abrufen der Auswahl des Schalters
-    //function getHighlightVisibility() {
-    //    var highlightVisibility = localStorage.getItem('highlightVisibility');
-    //    return highlightVisibility === 'true'; // Konvertiere den Wert in einen booleschen Wert
-    //}
-
-    //function saveScanVisibility(checked) {
-    //    localStorage.setItem('scanVisibility', checked);
-    //}
-
-    // Funktion zum Abrufen der Auswahl des Schalters
-    //function getScanVisibility() {
-    //    var scanVisibility = localStorage.getItem('scanVisibility');
-    //    return scanVisibility === 'true'; // Konvertiere den Wert in einen booleschen Wert
-    //}
-    //####################################################################################
-
+    
     // Funktion zum Löschen der gespeicherten Daten
     function clearCachedData() {
         localStorage.removeItem('cachedProductIDs');
@@ -1133,10 +963,10 @@
         var isFav = false;
 
         var cachedProductIDs = await getCachedProductIDs();
-            if(cachedProductIDs.includes(productID)){
-                const productInfo = allData.find(data => data.ID === productID);
-                isFav = productInfo.Favorit;
-            }
+        if(cachedProductIDs.includes(productID)){
+            const productInfo = allData.find(data => data.ID === productID);
+            isFav = productInfo.Favorit;
+        }
 
         var favElement = document.createElement('div');
 
