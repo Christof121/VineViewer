@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vine Viewer
 // @namespace    http://tampermonkey.net/
-// @version      Beta-1.0
+// @version      1.0
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
