@@ -929,6 +929,7 @@
                 const productInfo = allData.find(data => data.ID === productID);
                 // Class "highlighted" dem Product Tile hinzufügen
                 productTile.classList.add('highlighted');
+                productTile.style.transition = "background-color 2.5s";
                 // ändern der Hintergrundfarbe der Produkte im Cache
                 productTile.style.backgroundColor = color;
                 // Prüfen ob ein Element mit der Class vorhanden ist
