@@ -4,7 +4,7 @@ Aufgrund der Programmierung wurden von mir einige Anfragen an den Server von Ama
 Das Risiko für einen Ausschluss schätze ich persönlich als relativ gering ein.
 
 <h4>Funktionen:</h4>
-Folgende Funktionen werden hinzugefügt. Aktivieren / Deaktivieren in den Einstellungen.
+Folgende Funktionen werden hinzugefügt. Aktivieren / Deaktivieren in den Einstellungen
 - Produkte aus der Datenbank in einer Liste mit Filter anzeigen
 - Hintergrund der bereits angesehenen Produkte Farbig hinterlegen. (Farbe in den Einstellungen wählbar)
 - Ausblenden der bereits angesehenen Produkte
