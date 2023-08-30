@@ -582,7 +582,7 @@
         document.body.prepend(addSettingsUIButton);
 
         // Aufrufen der Funktion zum erstellen des Inhaltes des Einstellungsfensters
-        createsettingPopup();
+        await createsettingPopup();
 
         // Erstellen des Elementes für die Produktliste
         var addListButton = document.createElement("div");
