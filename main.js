@@ -1539,6 +1539,7 @@
                     stopCount = productCacheLength;
                     addItemList(startCount, stopCount, clickedItemId);
                     updatePopup();
+                    filterItems("favorit");
                 });
                 navigationContainer.appendChild(navigationoption);
             }
@@ -1568,7 +1569,17 @@
             searchInput.addEventListener('input', function(event) {
                 searchItems();
             });
+
+            var searchButton = document.createElement('button');
+            searchButton.textContent = "Suchen";
+            searchButton.addEventListener('click', function(event) {
+                var type = "titel";
+                var filter = searchInput.value.toLowerCase();
+                filterItems(type, filter);
+            });
+
             searchContainer.appendChild(searchInput);
+            searchContainer.appendChild(searchButton);
             popup.appendChild(searchContainer);
 
             // Erstellen der Navigation im popup
@@ -1859,6 +1870,45 @@
                popupPageMax = Math.ceil(productCounter / popupDefaultCount);
                popupPage.textContent = popupPageCurrent + "/" + popupPageMax;
            }
+
+            async function filterItems(type, criteria){
+                console.log("Filter");
+                var filterResults = [];
+                var allData = await getAllDataFromDatabase();
+                var sc;
+
+                console.log("Folgendes wird gefiltert");
+                console.log("Type: " + type);
+                console.log("Kriterien: " + criteria);
+
+                switch (type) {
+                    case "titel":
+                        for (sc = 0; sc <= (allData.length - 1); sc++){
+                            var titel = allData[sc].Titel;
+                            console.log("Titel: " + titel);
+                            if (titel.toLowerCase().includes(criteria.toLowerCase())) {
+
+                                filterResults.push(allData[sc]);
+                            }
+                        }
+                        console.log("Ergebnisse:");
+                        console.log(filterResults);
+                        return filterResults;
+                        break;
+                    case "favorit":
+                        for (sc = 0; sc <= (allData.length - 1); sc++){
+                            var favorit = allData[sc].Favorit;
+                            console.log("Favorit: " + favorit);
+                            if (favorit) {
+                                filterResults.push(allData[sc]);
+                            }
+                        }
+                        console.log("Ergebnisse:");
+                        console.log(filterResults);
+                        return filterResults;
+                        break;
+                }
+            }
 
             // Produkte der Liste hinzufügen
             addItemList(startCount,stopCount, "all");
