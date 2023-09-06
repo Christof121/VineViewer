@@ -74,14 +74,23 @@
         ["toggleFooter","Footer ausblenden","checkbox"]
     ];
 
+    var uiContainerCSS = `
+    position: fixed;
+    bottom: 0px;
+    z-index: 9999;
+    background-color: lime;
+    width: auto;
+    height: auto;
+    `
+
     // CSS UI Button
     var uiSettingCSS = `
-    position: fixed;
     left: 10px;
     bottom: 10px;
     z-index: 9999;
     width: 30px;
     height: 30px;
+    margin: 5px;
     background-color: #232f3e;
     border: black 2px solid;
     border-radius: 10px;
@@ -95,12 +104,12 @@
 
     // CSS UI List Button
     var uiListCSS = `
-    position: fixed;
     left: 10px;
     bottom: 50px;
     z-index: 9999;
     width: 30px;
     height: 30px;
+    margin: 5px;
     background-color: #232f3e;
     border: black 2px solid;
     border-radius: 10px;
@@ -118,11 +127,11 @@
 
     //CSS Settings Menu
     var settingPopupCSS = `
-    position: fixed;
     left: 10px;
     bottom: 10px;
     width: 30px;
     height: 30px;
+    margin: 5px;
     z-index: 9999;
     border: black 2px solid;
     border-radius: 10px;
@@ -202,7 +211,7 @@
     display: none;
     align-items: center;
     justify-content: center;
-    position: fixed;
+    margin: 5px;
     left: 10px;
     bottom: 10px;
     width: auto;
@@ -465,7 +474,8 @@
             updateMessageContent.textContent = msg
 
             // Hinzufügen des Elementes zur Seite
-            document.body.prepend(updateMessageDiv);
+            var uiContainer = document.getElementById('ui-container');
+            uiContainer.appendChild(updateMessageDiv);
 
             // Verzögerung bevor die Nachricht
             setTimeout(() => {
@@ -535,6 +545,11 @@
 
     // Funktion zum Erstellen des UI
     async function createUI(){
+        var uiContainer = document.createElement('div');
+        uiContainer.style.cssText = uiContainerCSS;
+        uiContainer.setAttribute('id', 'ui-container');
+        document.body.prepend(uiContainer);
+
         // Logo anstelle des Zahnrades
         var uiIMGurl = "https://m.media-amazon.com/images/G/01/vine/website/vine_logo_title._CB1556578328_.png";
 
@@ -579,7 +594,7 @@
         // Hinzufügen des Einstellung Buttons zur Website
         //addSettingsUIButton.appendChild(addUIIMG); // Hinzufügen des Vine Logos -> Deaktiviert, überarbeitung??
         addSettingsUIButton.appendChild(addButtonContent);
-        document.body.prepend(addSettingsUIButton);
+        uiContainer.appendChild(addSettingsUIButton);
 
         // Aufrufen der Funktion zum erstellen des Inhaltes des Einstellungsfensters
         await createsettingPopup();
@@ -602,7 +617,8 @@
 
         // Hinzufügen des Produktlisten Buttons zur Website
         addListButton.appendChild(addListButtonContent);
-        document.body.prepend(addListButton);
+        uiContainer.appendChild(addListButton);
+        //document.body.prepend(uiContainer);
     }
 
     // Erstellen des Einstellungen Menüs
@@ -737,10 +753,14 @@
             itemsDiv.appendChild(Item);
         }
 
+        var topDiv = document.createElement('div');
+
         // Elemente dem Einstellungsfenster hinzufügen
         closeButton.appendChild(closeButtonContent);
         titleDiv.appendChild(titleDivContent);
-        settingPopupContent.appendChild(titleDiv);
+        topDiv.appendChild(titleDiv);
+        topDiv.appendChild(closeButton);
+        settingPopupContent.appendChild(topDiv);
 
         // Container Alle Daten löschen Button erstellen
         var buttonDeleteDataDiv = document.createElement('div');
@@ -784,12 +804,14 @@
 
         // Erstellung des Einstellungen Fensters
         settingPopupContent.appendChild(itemsDiv);
-        settingPopupContent.appendChild(closeButton);
         settingPopupContent.appendChild(settingFooter);
         // Inhalt dem Einstellungs Container hinzufügen
         settingPopup.appendChild(settingPopupContent);
+
         // Einstellungsfenster der Website hinzufügen
-        document.body.prepend(settingPopup);
+        var uiContainer = document.getElementById('ui-container')
+        uiContainer.appendChild(settingPopup);
+        //document.body.prepend(settingPopup);
     }
 
     // Auswertung der Click Events der Einstellungsoptionen || Umbau auf for schleife (id länge?)
