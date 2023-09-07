@@ -34,7 +34,7 @@
     var redirectMaxTime = 5; // Angabe in Sekunden
 
     // Angabe der Zeit wie lange die Meldung eines Updates angezeigt werden soll
-    var updateMessageDuration = 15; // Angabe in Sekunden
+    var updateMessageDuration = 150; // Angabe in Sekunden
 
 
     //####################################################################
@@ -78,7 +78,8 @@
     position: fixed;
     bottom: 0px;
     z-index: 9999;
-    background-color: lime;
+    background-color: transparent !important;
+    pointer-events: none !important;
     width: auto;
     height: auto;
     `
@@ -100,6 +101,7 @@
     cursor: pointer;
     opacity: 1;
     transition: opacity 0.2s, bottom 0.2s ease 0s;
+    pointer-events: auto !important;
     `;
 
     // CSS UI List Button
@@ -119,6 +121,7 @@
     cursor: pointer;
     opacity: 1;
     transition: bottom 0.2s;
+    pointer-events: auto !important;
     `
 
     var uiButtonContentCSS = `
@@ -138,6 +141,7 @@
     background-color: #232f3e;
     transition: width 0.2s, height 0.2s, bottom 0.2s ease 0s;;
     color: white;
+    pointer-events: auto;
     `
 
     var settingPopupContentCSS = `
@@ -150,9 +154,6 @@
     var settingPopupCloseButton = `
     width: 10px;
     height: 10px;
-    position: absolute;
-    right: 2px;
-    top: 2px;
     cursor: pointer;
     `
 
@@ -201,7 +202,6 @@
     width: 100%;
     /* background-color: white; */
     height: 25px;
-    position: absolute;
     bottom: 0px;
     justify-content: center;
     display: flex;
@@ -223,6 +223,7 @@
     opacity: 0;
     transition: height 0.2s, opacity 0.2s;
     color: white;
+    pointer-events: auto !important;
     `
     var updateMessageContentCSS = `
     padding: 0 10px;
