@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vine Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.01
+// @version      1.02
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -34,7 +34,7 @@
     var redirectMaxTime = 5; // Angabe in Sekunden
 
     // Angabe der Zeit wie lange die Meldung eines Updates angezeigt werden soll
-    var updateMessageDuration = 150; // Angabe in Sekunden
+    var updateMessageDuration = 15; // Angabe in Sekunden
 
 
     //####################################################################
@@ -47,6 +47,7 @@
     let redirectTimeout;
     var addDate;
     var openList = false;
+    var isSettingsOpen = false;
     var popupDefaultCount;
     //##################################################
     // Der Wert darf nicht unter 24 Stunden gesetzt werden!
@@ -124,6 +125,15 @@
     pointer-events: auto !important;
     `
 
+    var uiSettingsIconCSS = `
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    `
+
     var uiButtonContentCSS = `
     font-size: 1.75vh;
     `
@@ -142,6 +152,9 @@
     transition: width 0.2s, height 0.2s, bottom 0.2s ease 0s;;
     color: white;
     pointer-events: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     `
 
     var settingPopupContentCSS = `
@@ -151,10 +164,19 @@
     transition: opacity 0.2s;
     `
 
+    var topDivCSS = `
+    position: relative;
+    margin-bottom: 5px;
+    `
+
     var settingPopupCloseButton = `
-    width: 10px;
-    height: 10px;
+    width: 25px;
+    height: 25px;
     cursor: pointer;
+    position: absolute;
+    top: 0;
+    right: 0;
+    text-align: center;
     `
 
     var titleDivCSS = `
@@ -214,8 +236,10 @@
     margin: 5px;
     left: 10px;
     bottom: 10px;
-    width: auto;
-    height: 0px;
+    width: fit-content;
+    max-width: 500px;
+    overflow-wrap: break-word;
+    height: auto;
     z-index: 9999;
     border: black 2px solid;
     border-radius: 10px;
@@ -226,7 +250,7 @@
     pointer-events: auto !important;
     `
     var updateMessageContentCSS = `
-    padding: 0 10px;
+    padding: 3px 10px;
     `
 
     // CSS für den Button zum Löschen der Daten
@@ -484,30 +508,14 @@
                 updateMessageDiv.style.display = "flex";
                 // Anzeigen der Nachricht mit einer kurzen verzögerung
                 setTimeout(() => {
-                    var uiSetting = document.getElementById('ui-setting');
-                    var uiButton = document.getElementById('ui-button');
-                    var uiList = document.getElementById('ui-list');
-                    var uiUpdate = document.getElementById('ui-update');
-                    uiList.style.bottom = "90px";
-                    uiButton.style.bottom = "50px";
-                    uiSetting.style.bottom = "50px";
                     updateMessageDiv.hidden = false;
-                    //updateMessageDiv.style.display = "flex";
                     updateMessageDiv.style.cursor = "pointer";
-                    updateMessageDiv.style.height = "30px";
                     updateMessageDiv.style.opacity = "1";
                 }, 200);
             }, 100);
 
             //Meldung ausblenden nach x Sekunden | Dauer der Einblendungen kann in den Einstellungen geändert werden
             setTimeout(() => {
-                var uiSetting = document.getElementById('ui-setting');
-                var uiButton = document.getElementById('ui-button');
-                var uiList = document.getElementById('ui-list');
-                var uiUpdate = document.getElementById('ui-update');
-                uiList.style.bottom = "50px";
-                uiButton.style.bottom = "10px";
-                uiSetting.style.bottom = "10px";
                 updateMessageDiv.hidden = true;
                 updateMessageDiv.style.height = "0px";
                 updateMessageDiv.style.opacity = "0";
@@ -551,52 +559,6 @@
         uiContainer.setAttribute('id', 'ui-container');
         document.body.prepend(uiContainer);
 
-        // Logo anstelle des Zahnrades
-        var uiIMGurl = "https://m.media-amazon.com/images/G/01/vine/website/vine_logo_title._CB1556578328_.png";
-
-        // Erstellung des Buttons der Einstellungen
-        var addSettingsUIButton = document.createElement('div');
-        addSettingsUIButton.setAttribute('id', 'ui-button');
-        addSettingsUIButton.style.cssText = uiSettingCSS;
-        // Click Event Einstellungs Button
-        addSettingsUIButton.addEventListener('click', function() {
-            // Erfassen der Elemente
-            var settingPopup = document.getElementById('ui-setting');
-            var settingPopupContent = document.getElementById('ui-setting-content');
-            var uiList = document.getElementById('ui-list');
-            // Standartmäßige Elemente Einblenden
-            settingPopup.hidden = false;
-            settingPopupContent.hidden = false;
-            //addSettingsUIButton.hidden = true; // Deaktiviert -> Überarbeitung UI
-            // Inhalt der Einstellungen erst Anzeigen nach der Animation
-            setTimeout(() => {
-                settingPopupContent.style.opacity = "1";
-            },200); // 200ms Animationszeit
-            // CSS Werte Höhe / Breite Einstellungsfenster
-            settingPopup.style.display = "flex";
-            settingPopup.style.width = "250px";
-            settingPopup.style.height = "300px";
-            // Button für die Liste der Produkte (Wert = höhe Einstellungsfenster + 20px)
-            uiList.style.bottom = "320px";
-            addSettingsUIButton.style.opacity = "0";
-            addSettingsUIButton.style.cursor = "default";
-
-        });
-
-        // Erstellen des Bild Elementes
-        var addUIIMG = document.createElement('img');
-        addUIIMG.setAttribute('src' , uiIMGurl);
-
-        // Inhalt des Einstellungsbuttons erstellen
-        var addButtonContent = document.createElement('span');
-        addButtonContent.textContent = '⚙️';
-        addButtonContent.style.cssText = uiButtonContentCSS;
-
-        // Hinzufügen des Einstellung Buttons zur Website
-        //addSettingsUIButton.appendChild(addUIIMG); // Hinzufügen des Vine Logos -> Deaktiviert, überarbeitung??
-        addSettingsUIButton.appendChild(addButtonContent);
-        uiContainer.appendChild(addSettingsUIButton);
-
         // Aufrufen der Funktion zum erstellen des Inhaltes des Einstellungsfensters
         await createsettingPopup();
 
@@ -629,13 +591,55 @@
         var settingPopup = document.createElement('div');
         settingPopup.setAttribute('id', 'ui-setting');
         settingPopup.style.cssText = settingPopupCSS;
-        settingPopup.hidden = true; // Einstellungen beim laden der Seite verstecken
+        //settingPopup.hidden = true; // Einstellungen beim laden der Seite verstecken
+        settingPopup.style.cursor = "pointer";
+
+        var settingPopupIconContainer = document.createElement('div');
+        settingPopupIconContainer.style.cssText = uiSettingsIconCSS
+
+        var settingPopupIcon = document.createElement('span');
+        settingPopupIcon.setAttribute('id', 'ui-setting-icon');
+        settingPopupIcon.textContent = '⚙️';
+        settingPopupIcon.style.cssText = uiButtonContentCSS;
+        settingPopupIcon.style.cursor = "pointer";
+        settingPopup.appendChild(settingPopupIconContainer);
+
+        settingPopupIconContainer.addEventListener('click', function() {
+            if(!isSettingsOpen){
+                settingPopupIconContainer.hidden = true;
+                settingPopupIconContainer.style.display = "none"
+                settingPopup.style.cursor = "auto";
+                settingPopup.style.width = "250px";
+                //settingPopup.style.height = "auto";
+                settingPopup.style.overflow = "hidden"
+                settingPopup.hidden = false;
+                //settingPopupContent.hidden = false;
+                settingPopupContent.hidden = false;
+                const element = document.getElementById('ui-setting-content');
+                const pixel = element.scrollHeight;
+                const wpixel = element.scrollWidth;
+                settingPopup.style.height = pixel + "px";
+                console.log("Height Pixel: " + pixel);
+                console.log("Width Pixel: " + wpixel);
+                setTimeout(() => {
+                    settingPopupContent.style.opacity = "1";
+                    isSettingsOpen = true;
+                },200); // 200ms Animationszeit
+            };
+        });
+
+        settingPopupIconContainer.appendChild(settingPopupIcon);
+        settingPopup.appendChild(settingPopupIconContainer);
 
         // Div für den Inhalt erstellen
         var settingPopupContent = document.createElement('div');
         settingPopupContent.setAttribute('id', 'ui-setting-content');
         settingPopupContent.style.cssText = settingPopupContentCSS;
         settingPopupContent.hidden = true;
+
+        var topDiv = document.createElement('div');
+        topDiv.setAttribute('id', 'ui-top-div');
+        topDiv.style.cssText = topDivCSS;
 
         // Div für den Schließen Button erstellen
         var closeButton = document.createElement('div');
@@ -646,19 +650,22 @@
         closeButtonContent.textContent = 'X';
         closeButtonContent.addEventListener('click', function() {
             // Close Setting Popup
-            var uiList = document.getElementById('ui-list');
-            settingPopupContent.style.opacity = "0";
-            // rücksetzten der Werte nach ablaufn der Animation
-            setTimeout(() => {
-                var uiButton = document.getElementById('ui-button');
-                uiList.style.bottom = "50px";
-                settingPopup.style.width = "30px";
-                settingPopup.style.height = "30px";
-                uiButton.style.opacity = "1";
-                uiButton.style.cursor = "pointer";
-                settingPopupContent.hidden = true;
-                settingPopup.hidden = true;
-            }, 150); // 150ms -> Animationszeit Opacity
+            //var uiList = document.getElementById('ui-list');
+            if(isSettingsOpen){
+                var uiSettingIcon = document.getElementById('ui-setting-icon');
+                settingPopupContent.style.opacity = "0";
+                // rücksetzten der Werte nach ablaufn der Animation
+                setTimeout(() => {
+                    settingPopup.style.width = "30px";
+                    settingPopup.style.height = "30px";
+                    settingPopupContent.hidden = true;
+                    settingPopup.hidden = true;
+                    //uiSettingIcon.hidden = false;
+                    settingPopupIconContainer.hidden = false;
+                    settingPopupIconContainer.style.display = "flex"
+                    isSettingsOpen = false;
+                }, 150); // 150ms -> Animationszeit Opacity
+            };
         });
 
         // Titel Div erstellen
@@ -753,8 +760,6 @@
             // hinzufügen der Option ins Einstellungsfenster
             itemsDiv.appendChild(Item);
         }
-
-        var topDiv = document.createElement('div');
 
         // Elemente dem Einstellungsfenster hinzufügen
         closeButton.appendChild(closeButtonContent);
