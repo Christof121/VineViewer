@@ -304,7 +304,13 @@
     var favElementCSShighlighted = `
     color: yellow;
     `;
-
+   
+    var gridSearchCSS = ` // hinzufügen der suche unter vvp-items-grid-container 
+    position: absolute;
+    left: 50%;
+    top: 35px;
+    `;
+    
     // Funktion Aufrufen um eine verbindung mti der Datenbank herzustellen
     window.addEventListener("DOMContentLoaded", connectDatabase());
 
