@@ -20,6 +20,7 @@ Folgende Funktionen sind noch geplant
 - Automatisches Scannen der Seiten
 - Einblenden der Seitanauswahl von Amazon im oberen Bereich der Seite
 - Optimierung des Filters in der Liste
+- Suche über dem Grid für die aktuelle Seite
 
 <h4>
   Bei Fehlern oder Bugs bitte die Konsole des Browsers öffnen und den dort ggf. Angezeigten Fehler, zusammen mit einer groben Beschreibung wie der zustande gekommen ist mir zusenden.
