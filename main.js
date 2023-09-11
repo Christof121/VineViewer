@@ -161,11 +161,11 @@
     width: 100%;
     height: 100%;
     opacity: 0;
+    position: relative;
     transition: opacity 0.2s;
     `
 
     var topDivCSS = `
-    position: relative;
     margin-bottom: 5px;
     `
 
@@ -224,6 +224,7 @@
     width: 100%;
     /* background-color: white; */
     height: 25px;
+    position: absolute;
     bottom: 0px;
     justify-content: center;
     display: flex;
@@ -441,19 +442,7 @@
     // Erzeugen der Updatemeldung
     async function updateMessage() {
         var msg;
-
-        // Update Div erstellen
-        var updateMessageDiv = document.createElement('div');
-        updateMessageDiv.style.cssText = updateMessageDivCSS;
-        updateMessageDiv.setAttribute('id', 'ui-update');
-        updateMessageDiv.hidden = true;
-
-        // Content Div des Update Divs erstellen
-        var updateMessageContent = document.createElement('div');
-        updateMessageContent.style.cssText = updateMessageContentCSS;
-
-        // Content Div dem Update Div als Child hinzufügen
-        updateMessageDiv.appendChild(updateMessageContent);
+        var onClick;
 
         // Abfrage einer neuer Version
         switch(await checkUpdate()) {
@@ -461,10 +450,11 @@
             case true:
                 var version = localStorage.getItem("newVersion");
                 msg = "Version " + version + " verfügbar";
-                message(msg);
-                updateMessageContent.addEventListener('click', function() {
-                    window.open(scriptURL, "_blank");
-                });
+                onClick = 'window.open(scriptURL, "_blank");'
+                notification(msg, onClick);
+                //updateMessageContent.addEventListener('click', function() {
+                //    window.open(scriptURL, "_blank");
+                //});
                 break;
                 // Kein Update verfügbar
             case false:
@@ -477,30 +467,57 @@
                     if(debug){console.log("Neue Version vorhanden, intervall nicht abgelaufen, lade aus Local");};
                     // Erzeugung der Meldung
                     msg = "Version " + version + " verfügbar";
-                    message(msg);
-                    updateMessageContent.addEventListener('click', function() {
-                        window.open(scriptURL, "_blank");
-                    });
+                    onClick = 'window.open(scriptURL, "_blank");'
+                    notification(msg, onClick);
+                    //updateMessageContent.addEventListener('click', function() {
+                    //    window.open(scriptURL, "_blank");
+                    //});
                 }
                 break;
                 // Fehler bei der Abfrage
             case "error":
                 msg = "Fehler Überprüfen von Updates";
-                message(msg);
-                updateMessageContent.addEventListener('click', function() {
-                    alert("Error: " + updateerror);
-                });
+                onClick = alert("Error: " + updateerror);
+                notification(msg, onClick);
+                //updateMessageContent.addEventListener('click', function() {
+                //    alert("Error: " + updateerror);
+                //});
                 break;
         }
+    }
 
-        // Ein / Ausblenden der Nachricht
-        function message(msg){
-            // Setzten des Textes
-            updateMessageContent.textContent = msg
+            // Ein / Ausblenden der Nachricht
+        function notification(msg, onClickAction){
+            if(onClickAction == null || onClickAction == undefined){
+                onClickAction = "";
+            }
+            // Update Div erstellen
+            var updateMessageDiv = document.createElement('div');
+            updateMessageDiv.style.cssText = updateMessageDivCSS;
+            updateMessageDiv.setAttribute('id', 'ui-update');
+            updateMessageDiv.hidden = true;
+
+            // Content Div des Update Divs erstellen
+            var updateMessageContent = document.createElement('div');
+            updateMessageContent.style.cssText = updateMessageContentCSS;
+            updateMessageContent.textContent = msg;
+
+            // Content Div dem Update Div als Child hinzufügen
+            updateMessageDiv.appendChild(updateMessageContent);
 
             // Hinzufügen des Elementes zur Seite
-            var uiContainer = document.getElementById('ui-container');
+            var uiContainer = document.getElementById('ui-container')
             uiContainer.appendChild(updateMessageDiv);
+
+
+            updateMessageContent.addEventListener('click', function() {
+                try{
+                    eval(onClickAction);
+                } catch(error) {
+                    console.log("Fehler beim Anzeigen der Nachricht");
+                    console.log(error);
+                }
+            });
 
             // Verzögerung bevor die Nachricht
             setTimeout(() => {
@@ -525,7 +542,7 @@
                 }, 200);
             }, (updateMessageDuration * 1000));
         }
-    }
+
 
     // Funktion wird nach dem vollständigen Laden der Seite aufgerufen
     function connectDatabase(){
@@ -1861,6 +1878,7 @@
             await scanAndCacheAllProducts();
             if(debug){console.log("[INI] - Alle Produkte Scannen")};
         }
+
         window.addEventListener('scroll', function(event){
             if(localStorage.getItem("autoScan") == "false"){
                 scanAndCacheVisibleProducts();
