@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vine Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.02
+// @version      1.03
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -303,6 +303,26 @@
     // CSS für die Favoriten
     var favElementCSShighlighted = `
     color: yellow;
+    `;
+
+    var navigationTopCSS = `
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    top: 75px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    `
+
+    var siteSearchCSS = `
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    top: 34px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
     `;
 
     // Funktion Aufrufen um eine verbindung mti der Datenbank herzustellen
@@ -1840,6 +1860,53 @@
         });
     }
 
+    function navigationTop() {
+        var container = document.getElementById('vvp-items-button-container');
+        var navContainer = document.getElementById('vvp-items-grid-container');
+        var navigation = navContainer.querySelector('div[role="navigation"]');
+        var navigationContainer = document.createElement('div')
+        if(navigation){
+            var topNavigation = navigation.cloneNode(true);
+            navigation.style.transform = "translateX(-130px)"
+            navigationContainer.style.cssText = navigationTopCSS;
+            navigationContainer.appendChild(topNavigation);
+            container.appendChild(navigationContainer);
+        }
+    }
+
+    // Suchfunktion der Vine Seite hinzugefügt
+    function siteSearchBar() {
+        var container = document.getElementById('vvp-items-button-container');
+        var searchBarContainer = document.createElement('div');
+        searchBarContainer.style.cssText = siteSearchCSS;
+
+        var searchBar = document.createElement('input');
+        searchBar.setAttribute("type", "text");
+        searchBar.setAttribute("placeholder", "Filter aktuelle Seite");
+
+        searchBarContainer.appendChild(searchBar);
+        container.appendChild(searchBarContainer);
+
+        var productTiles = document.getElementsByClassName('vvp-item-tile');
+
+        searchBar.addEventListener('input', function() {
+            var searchInput = searchBar.value.toLowerCase();
+            for (var i = 0; i < productTiles.length; i++) {
+                var productTile = productTiles[i];
+                var contentContainer = productTile.querySelector('.vvp-item-tile-content');
+                var nameElement = contentContainer.querySelector('a span span.a-truncate-full');
+                var titel = nameElement.textContent
+                if(titel.includes(searchInput)){
+                    productTile.hidden = false;
+                    productTile.style.display = "block";
+                }else{
+                    productTile.hidden = true;
+                    productTile.style.display = "none";
+                }
+            }
+        });
+    }
+
     // Main Funktion, wird aufgerufen nachdem eine Verbindung zur Datenbank hergestellt wurde
     // Steuert den Ablauf des Scriptes, an welcher Reihenolge die Funktionen geladen werden.
     async function main() {
@@ -1864,6 +1931,10 @@
         if(debug){console.log("[INI] - Overlay geladen")};
         await updateMessage();
         if(debug){console.log("[INI] - Prüfen auf Updates")};
+        await navigationTop();
+        if(debug){console.log("[INI] - Navigation Oben geladen")};
+        await siteSearchBar();
+        if(debug){console.log("[INI] - Suchleiste geladen")};
         await highlightCachedProducts();
         if(debug){console.log("[INI] - Cached Produkte hervorgehoben")};
         await checkForAutoScan();
