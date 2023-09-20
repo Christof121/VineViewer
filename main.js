@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         List Rework Vine Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.02
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -301,7 +301,8 @@
 
     var popupTopContainerCSS = `
     width: 100%;
-    height: 100px;
+    height: 140px;
+    padding: 5px;
     `;
 
     var popupTopContainerItemCSS = `
@@ -310,9 +311,65 @@
 
     var popupContentContainerCSS = `
     width: 100%;
-    height: calc(100% - 110px);
-    background-color: lime;
+    height: calc(100% - 140px);
     overflow-y: auto;
+    padding: 10px;
+    `;
+    var popupTopContainerSelectCSS = `
+    padding: 5px;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    `;
+
+    var popupTopContainerPagesCSS = `
+    padding: 5px;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    `;
+
+    var listProductContainerCSS = `
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    margin-right: 10px;
+    `;
+
+    var popupContainerItemsSpanCSS = `
+    margin-right: 10px;
+    `;
+
+    var popupDisplayPagesCSS = `
+    margin-left: 10px;
+    margin-right: 10px;
+    `;
+
+    var listImageElementCSS = `
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    margin-right: 10px;
+    `;
+
+    var listDateElementCSS = `
+    margin-right: 10px;
+    width: 100px;
+    text-align: center;
+    `;
+
+    var listTitleElementCSS = `
+    flex: 1;
+    `;
+
+    var listButtonContainerCSS = `
+    display: flex;
+    align-items: center;
+    `;
+
+    var listButtonSpanCSS = `
+    width: 125px;
+    text-align: right;
     `;
 
     // Funktion Aufrufen um eine verbindung mti der Datenbank herzustellen
@@ -1057,7 +1114,7 @@
                         // Neuen Wert für den Favoriten der Datenbank hinzufügen                // Abhilfe könnte schaffen das Produkt dann zur Datenbank hinzuzufügen und als Favorit zu setzten, auch wenn es außerhalb dessichtbaren bereiches ist
                         data.Favorit = !isFav;
                         const updateRequest = objectStore.put(data);
-                        updateRequest.onsuccess = function(event) {
+                        updateRequest.onsuccess = async function(event) {
                             if(debug){console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`)};
                             // Visuelle Elemente Updaten
                             isFav = !isFav;
@@ -1067,7 +1124,7 @@
                                 favElement.style.color = "white";
                             }
                             // Aktualisieren der Daten
-                            allData = getAllDataFromDatabase();
+                            allData = await getAllDataFromDatabase();
                         };
                         updateRequest.onerror = function(event) {
                             console.log(`Fehler beim Aktualisieren des Favorit-Werts für ID ${productID}.`);
@@ -1515,6 +1572,8 @@
             var startCount = 0;
             var stopCount = startCount + popupDefaultCount;
             var productCacheLength = await getProductCacheLength();
+            var data = allData;
+            var dataIDs = await getCachedProductIDs();
 
 
 
@@ -1551,12 +1610,13 @@
 
             var popupTopContainerNav = document.createElement('div');
             popupTopContainerNav.setAttribute('id', 'popupTopContainerNav');
+            popupTopContainerNav.style.padding = '5px';
 
             popupTopContainer.appendChild(popupTopContainerNav);
 
             const navoptions = [
-                ["all", "Alle Produkte"],
-                ["favs", "Favoriten"]
+                ["favs", "Favoriten"],
+                ["all", "Alle Produkte"]
             ]
 
             for(var no = 0; no <= (navoptions.length -1); no++){
@@ -1574,17 +1634,22 @@
                         span.style.fontWeight = 'normal';
                     });
                     event.target.style.fontWeight = 'bold';
+                    page = 1;
+                    getPopupData(clickedItemId);
+                    searchInput.value = "";
                 });
                 popupTopContainerNav.appendChild(navigationoption);
             };
 
             var popupTopContainerSearch = document.createElement('div');
             popupTopContainerSearch.setAttribute('id', 'popupTopContainerSearch');
+            popupTopContainerSearch.style.padding = '5px';
 
+            // Erstellen des Titels der Suchleiste
             var searchTitel = document.createElement('span');
             searchTitel.style.height = '30px';
             searchTitel.style.width = '50px';
-            searchTitel.style.padding = '5px';
+            searchTitel.style.paddingRight = '5px';
             searchTitel.style.fontWeight = 'bold';
             searchTitel.textContent = 'Filter: ';
 
@@ -1599,15 +1664,19 @@
             searchInput.style.padding = '5px';
             searchInput.addEventListener('input', function(event) {
                 // Such Funktion
+                //search(); // <- Kann bei zu großen Datenmengen zu hängern führen
+            });
+            searchInput.addEventListener("keyup", function(event) {
+                if (event.keyCode === 13) {
+                    // Wenn die Enter-Taste gedrückt wurde, Button klicken
+                    searchButton.click();
+                }
             });
 
             var searchButton = document.createElement('button');
             searchButton.textContent = "Suchen";
             searchButton.addEventListener('click', function(event) {
-                var type = "titel";
-                var filter = searchInput.value.toLowerCase();
-//                filterItems(type, filter);
-                updatePopup();
+                search();
             });
 
             popupTopContainerSearch.appendChild(searchInput);
@@ -1617,11 +1686,13 @@
             // Navigation
             var popupTopContainerItems = document.createElement('div');
             popupTopContainerItems.setAttribute('id', 'popup-top-items');
+            popupTopContainerItems.style.cssText = popupTopContainerSelectCSS;
 
             popupTopContainer.appendChild(popupTopContainerItems);
 
             var popupContainerItemsSpan = document.createElement('span');
             popupContainerItemsSpan.textContent = "xx - xx / XXX";
+            popupContainerItemsSpan.style.cssText = popupContainerItemsSpanCSS;
 
             popupTopContainerItems.appendChild(popupContainerItemsSpan);
 
@@ -1634,6 +1705,12 @@
             ];
 
             var popupTopContainerProductCountSelect = document.createElement('select');
+
+            popupTopContainerProductCountSelect.addEventListener('change', function(event) {
+                popupDefaultCount = parseInt(event.target.value);
+                localStorage.setItem("popupDefaultCount", popupDefaultCount);
+                updatePopup();
+            });
 
             popupTopContainerItems.appendChild(popupTopContainerProductCountSelect);
 
@@ -1650,6 +1727,7 @@
 
             var popupTopContainerPages = document.createElement('div');
             popupTopContainerPages.setAttribute('id', 'popup-top-pages');
+            popupTopContainerPages.style.cssText = popupTopContainerPagesCSS;
 
             popupTopContainer.appendChild(popupTopContainerPages);
 
@@ -1665,6 +1743,7 @@
             var popupDisplayPages = document.createElement('span');
             popupDisplayPages.setAttribute('id', 'popup-top-pages-display');
             popupDisplayPages.textContent = " - / - ";
+            popupDisplayPages.style.cssText = popupDisplayPagesCSS;
 
             popupTopContainerPages.appendChild(popupDisplayPages);
 
@@ -1685,29 +1764,181 @@
             function addItemList(data, page){
                 var cacheLength = data.length;
                 try{
-                    console.log("Länge: " + cacheLength);
                     if(cacheLength == 0){
-                        console.log("Keine Produkte mit den Suchkreterien");
-                        return;
+                        var productListMessage = document.createElement('span');
+                        productListMessage.setAttribute('id', "productListMessage");
+                        productListMessage.textContent = "Es wurden keine Produkte gefunden."
+                        popupContentContainer.insertBefore(productListMessage, popupContentContainer.firstChild);
+                        page = 0;
+                        startCount = -1;
+                        stopCount = 0;
+                    }else{
+                        startCount = (page * popupDefaultCount) - popupDefaultCount;
+                        stopCount = startCount + popupDefaultCount;
+                        if(stopCount >= cacheLength){
+                            stopCount = cacheLength;
+                        }
+
+
+                        for(var x = startCount; x <= (stopCount - 1); x++){
+                            var pID = data[x].ID;
+                            var title = data[x].Titel;
+                            var link = data[x].Link;
+                            var image = data[x].BildURL;
+                            var buttonContent = data[x].Button;
+                            var date = data[x].Datum;
+                            var fav = data[x].Favorit;
+
+                            if(title && image && buttonContent){
+                                 // Erstellen eines Produkt Containers
+                                var productContainer = document.createElement('div');
+                                productContainer.classList.add('product-container');
+                                productContainer.style.cssText = listProductContainerCSS;
+
+                                var listFavElement = document.createElement('span');
+                                listFavElement.textContent = "★"
+                                listFavElement.style.cssText = favCSS;
+                                listFavElement.setAttribute('id', pID);
+                                if(fav){
+                                    listFavElement.style.color = "#ffe143";
+                                }
+                                listFavElement.addEventListener('click', function(event) {
+                                    var eventTarget = event.target;
+                                    var productID = event.target.id;
+                                    var isFav = false;
+                                    if(dataIDs.includes(productID)){
+                                        const productInfo = data.find(eventData => eventData.ID === productID);
+                                        isFav = productInfo.Favorit;
+                                    }
+
+                                    // Verbindung mit der Datenbank herstellen
+                                    const request = indexedDB.open(dbName, dbVersion);
+
+                                    request.onerror = function(event) {
+                                        console.log("Fehler beim Öffnen der Datenbank ID: FAV");
+                                    };
+
+                                    request.onsuccess = function(event) {
+                                        const db = event.target.result;
+
+                                        const transaction = db.transaction([objectStoreName], "readwrite");
+                                        const objectStore = transaction.objectStore(objectStoreName);
+                                        // Suchen der Product ID in der Datenbank
+                                        const getRequest = objectStore.get(productID);
+                                        getRequest.onsuccess = function(event) {
+                                            const eventData = event.target.result;
+                                            if (eventData) { // Beim scannen des sichtbaren Bereiches kommt es hier zu einem fehler, da die ID die sich halb im sichtfeld befindet, noch nicht in der Datenbank eingetragen ist
+                                                // Neuen Wert für den Favoriten der Datenbank hinzufügen                // Abhilfe könnte schaffen das Produkt dann zur Datenbank hinzuzufügen und als Favorit zu setzten, auch wenn es außerhalb dessichtbaren bereiches ist
+                                                eventData.Favorit = !isFav;
+                                                const updateRequest = objectStore.put(eventData);
+                                                updateRequest.onsuccess = async function(event) {
+                                                    if(debug){console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`)};
+                                                    // Visuelle Elemente Updaten
+                                                    isFav = !isFav;
+                                                    if(isFav){
+                                                        eventTarget.style.color = "#ffe143";
+                                                    }else{
+                                                        eventTarget.style.color = "white";
+                                                    }
+                                                    for(var f = 0; f < data.length; f++){
+                                                        if(data[f].ID === productID){
+                                                            data[f].Favorit = !data[f].Favorit
+                                                        }
+                                                    }
+                                                    // Aktualisieren der Daten
+                                                    allData = await getAllDataFromDatabase();
+                                                };
+                                                updateRequest.onerror = function(event) {
+                                                    console.log(`Fehler beim Aktualisieren des Favorit-Werts für ID ${productID}.`);
+                                                };
+                                            } else {
+                                                // Product ID wurde nicht in der Datenbank gefunden
+                                                console.log(`Datensatz mit ID ${productID} wurde nicht gefunden.`);
+                                            }
+                                        };
+
+                                        getRequest.onerror = function(event) {
+                                            console.log(`Fehler beim Abrufen des Datensatzes mit ID ${productID}.`);
+                                        };
+                                    };
+
+
+
+                                });
+
+
+                                var imageElement = document.createElement('img');
+                                imageElement.src = image;
+                                imageElement.style.cssText = listImageElementCSS;
+
+                                var dateElement = document.createElement('div');
+                                dateElement.textContent = date;
+                                dateElement.style.cssText = listDateElementCSS;
+
+                                var titleElement = document.createElement('a');
+                                titleElement.classList.add('product-title');
+                                titleElement.textContent = title;
+                                titleElement.style.cssText = listTitleElementCSS;
+                                titleElement.href = link;
+                                titleElement.target = "_blank";
+
+                                var buttonContainer = document.createElement('span');
+                                buttonContainer.classList.add('a-button');
+                                buttonContainer.classList.add('a-button-primary');
+                                buttonContainer.classList.add('vvp-details-btn');
+                                buttonContainer.style.cssText = listButtonContainerCSS;
+
+                                var buttonSpan = document.createElement('span');
+                                buttonSpan.innerHTML = buttonContent;
+                                buttonSpan.classList.add('a-button-inner');
+                                buttonSpan.style.cssText = listButtonSpanCSS;
+
+                                buttonContainer.appendChild(buttonSpan);
+
+                                productContainer.appendChild(listFavElement);
+                                productContainer.appendChild(imageElement);
+                                productContainer.appendChild(dateElement);
+                                productContainer.appendChild(titleElement);
+                                productContainer.appendChild(buttonContainer);
+
+                                popupContentContainer.insertBefore(productContainer, popupContentContainer.firstChild);
+                            }
+
+
+                            var Item = document.createElement('p');
+                            Item.setAttribute('id', 'product-container');
+                            Item.textContent = "[" + (x + 1) + "] " + data[x].Titel;
+                            //popupContentContainer.appendChild(Item);
+                        }
                     }
-                    startCount = (page * popupDefaultCount) - popupDefaultCount;
-                    stopCount = startCount + popupDefaultCount;
-                    if(stopCount >= productCacheLength){
-                        stopCount = productCacheLength;
+
+                    var pageMax = Math.ceil(cacheLength / popupDefaultCount);
+
+                    if(page <=1){
+                        popupButtonBack.disabled = true;
+                        popupButtonBack.style.cursor = "not-allowed";
+                    }else{
+                        popupButtonBack.disabled = false;
+                        popupButtonBack.style.cursor = "pointer";
                     }
 
-
-                    for(var x = startCount; x <= (stopCount - 1); x++){
-                        var Item = document.createElement('p');
-                        Item.setAttribute('id', 'product-container');
-                        Item.textContent = "[" + x + "] " + data[x].Titel;
-                        popupContentContainer.appendChild(Item);
-
+                    if(page >= pageMax){
+                        popupButtonNext.disabled = true;
+                        popupButtonNext.style.cursor = "not-allowed";
+                    } else {
+                        popupButtonNext.disabled = false;
+                        popupButtonNext.style.cursor = "pointer";
                     }
 
-                    var pageMax = Math.ceil(productCacheLength / popupDefaultCount);
                     var pageDisplay = document.getElementById("popup-top-pages-display");
                     pageDisplay.textContent = page + " / " + pageMax;
+
+                    var topItemsContainer = document.getElementById("popup-top-items");
+                    var topItems = topItemsContainer.querySelector("span");
+                    var startItem = (startCount + 1);
+                    var stopItem = stopCount;
+                    var sumItem = cacheLength;
+                    topItems.textContent = startItem + " - " + stopItem + " / " + sumItem;
 
                 }catch(error){
                     console.log("Error: " + error);
@@ -1717,24 +1948,58 @@
 
             }
 
+            function getPopupData(arg){
+                data = [];
+                switch (arg){
+                    case "favs":
+                        for(var fc = 0;fc <= (allData.length - 1); fc++){
+                            var favorit = allData[fc].Favorit;
+                            if(favorit){
+                                data.push(allData[fc]);
+                            }
+                        }
+                        break;
+                    default:
+                        data = allData;
+                }
+                dataIDs = data.map(item => item.ID);
+                updatePopup();
+            }
+
+            function search() {
+                var filterData = [];
+                var filter = searchInput.value.toLowerCase();
+                for (var sc = 0; sc <= (data.length - 1); sc++){
+                    var titel = data[sc].Titel;
+                    if (titel.toLowerCase().includes(filter.toLowerCase())) {
+                        filterData.push(data[sc]);
+                    }
+                }
+                removeItemList();
+                addItemList(filterData, page)
+            }
+
             function updatePopup(){
-                var data = [];
                 // Get Search Input
                 var searchInput = document.getElementById('popup-search-input');
                 var searchQuery = searchInput.value.toLowerCase();
                 removeItemList();
-                addItemList(allData, page);
+                addItemList(data, page);
             }
 
             function removeItemList() {
-                var elementsToRemove = document.querySelectorAll('#product-container');
+                var elementsToRemove = document.querySelectorAll('.product-container');
+                try {
+                    var productListMessageRemove = document.getElementById("productListMessage");
+                    productListMessageRemove.remove();
+                } catch (error){
+                    // Message ist nicht vorhanden
+                }
                 for (var i = 0; i < elementsToRemove.length; i++) {
                     var element = elementsToRemove[i];
                     element.parentNode.removeChild(element);
                 }
             }
-
-
 
 
             document.body.appendChild(popupBackgroundDiv);
@@ -1743,6 +2008,9 @@
             popupInner.appendChild(popupTopContainer);
             popupInner.appendChild(popupContentContainer);
             document.body.appendChild(popup);
+
+            getPopupData("favs");
+
         }
 
         function closePopup(){
@@ -1811,7 +2079,6 @@
             await scanAndCacheAllProducts();
             if(debug){console.log("[INI] - Alle Produkte Scannen")};
         }
-        createPopup();
         window.addEventListener('scroll', function(event){
             if(localStorage.getItem("autoScan") == "false"){
                 scanAndCacheVisibleProducts();
