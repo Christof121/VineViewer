@@ -334,6 +334,9 @@
     align-items: center;
     margin-bottom: 10px;
     margin-right: 10px;
+    height: 100px;
+    opacity: 1;
+    transition: height 2s ease, opacity 1s ease, margin-bottom 2s ease;
     `;
 
     var popupContainerItemsSpanCSS = `
@@ -1832,6 +1835,7 @@
                                                 eventData.Favorit = !isFav;
                                                 const updateRequest = objectStore.put(eventData);
                                                 updateRequest.onsuccess = async function(event) {
+                                                    var newdata = [];
                                                     if(debug){console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`)};
                                                     // Visuelle Elemente Updaten
                                                     isFav = !isFav;
@@ -1839,6 +1843,17 @@
                                                         eventTarget.style.color = "#ffe143";
                                                     }else{
                                                         eventTarget.style.color = "white";
+                                                        setTimeout(() => {
+                                                            eventTarget.parentNode.style.height = "0px";
+                                                            eventTarget.parentNode.style.opacity = "0";
+                                                            eventTarget.parentNode.style.marginBottom = "0px";
+                                                            setTimeout(() => {
+                                                               eventTarget.parentNode.remove();
+                                                               sumItem--;
+                                                               stopItem--;
+                                                               topItems.textContent = startItem + " - " + stopItem + " / " + sumItem;
+                                                            }, 2100);
+                                                        }, 5000);
                                                     }
                                                     for(var f = 0; f < data.length; f++){
                                                         if(data[f].ID === productID){
