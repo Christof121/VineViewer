@@ -6,6 +6,7 @@ Das Risiko für einen Ausschluss schätze ich persönlich als relativ gering ein
 <h4>Funktionen:</h4>
 Folgende Funktionen werden hinzugefügt. Aktivieren / Deaktivieren in den Einstellungen
 - Produkte aus der Datenbank in einer Liste mit Filter anzeigen
+- Favoriten auflisten
 - Hintergrund der bereits angesehenen Produkte Farbig hinterlegen. (Farbe in den Einstellungen wählbar)
 - Ausblenden der bereits angesehenen Produkte
 - Auswählen ob nur Produkte im Sicht Bereich gescannt werden soll oder alle auf der Seite verfügbaren
@@ -15,11 +16,11 @@ Folgende Funktionen werden hinzugefügt. Aktivieren / Deaktivieren in den Einste
 - Alle Daten in der Datenbank löschen
 - Automatische Abfrage von Updates
 
+
 Folgende Funktionen sind noch geplant
 - Option Produkte nach X Tagen automatisch aus der Datenbank löschen zu lassen
 - Automatisches Scannen der Seiten
 - Einblenden der Seitanauswahl von Amazon im oberen Bereich der Seite
-- Optimierung des Filters in der Liste
 - Suche über dem Grid für die aktuelle Seite
 
 <h4>
