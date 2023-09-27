@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vine Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.03
+// @version      1.02
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -10,7 +10,6 @@
 // @license      MIT
 // @grant         GM.xmlHttpRequest
 // @grant         GM.openInTab
-// @grant       unsafeWindow
 // @connect greasyfork.org
 // ==/UserScript==
 
@@ -306,110 +305,6 @@
     color: yellow;
     `;
 
-    var popupCSS = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 75%;
-    height: 75%;
-    background-color: white;
-    box-shadow: rgba(0, 0, 0, 0.9) 0px 0px 50px 10px;
-    border: 1px solid black;
-    padding: 10px;
-    z-index: 999;
-    border-radius: 15px;
-    `;
-
-    var popupInnerCSS = `
-    width: 100%;
-    height: 100%;
-    `;
-
-    var popupBackgroundDivCSS = `
-    width: 100%;
-    height: 100%;
-    position: fixed;
-    top: 0;
-    z-index: 999;
-    `;
-
-    var popupTopContainerCSS = `
-    width: 100%;
-    height: 140px;
-    padding: 5px;
-    `;
-
-    var popupTopContainerItemCSS = `
-    padding-right: 5px;
-    `;
-
-    var popupContentContainerCSS = `
-    width: 100%;
-    height: calc(100% - 140px);
-    overflow-y: auto;
-    padding: 10px;
-    `;
-    var popupTopContainerSelectCSS = `
-    padding: 5px;
-    align-items: center;
-    justify-content: center;
-    display: flex;
-    `;
-
-    var popupTopContainerPagesCSS = `
-    padding: 5px;
-    align-items: center;
-    justify-content: center;
-    display: flex;
-    `;
-
-    var listProductContainerCSS = `
-    display: flex;
-    align-items: center;
-    margin-bottom: 10px;
-    margin-right: 10px;
-    height: 100px;
-    opacity: 1;
-    transition: height 2s ease, opacity 1s ease, margin-bottom 2s ease;
-    `;
-
-    var popupContainerItemsSpanCSS = `
-    margin-right: 10px;
-    `;
-
-    var popupDisplayPagesCSS = `
-    margin-left: 10px;
-    margin-right: 10px;
-    `;
-
-    var listImageElementCSS = `
-    width: 100px;
-    height: 100px;
-    object-fit: cover;
-    margin-right: 10px;
-    `;
-
-    var listDateElementCSS = `
-    margin-right: 10px;
-    width: 100px;
-    text-align: center;
-    `;
-
-    var listTitleElementCSS = `
-    flex: 1;
-    `;
-
-    var listButtonContainerCSS = `
-    display: flex;
-    align-items: center;
-    `;
-
-    var listButtonSpanCSS = `
-    width: 125px;
-    text-align: right;
-    `;
-
     // Funktion Aufrufen um eine verbindung mti der Datenbank herzustellen
     window.addEventListener("DOMContentLoaded", connectDatabase());
 
@@ -682,7 +577,7 @@
         document.body.prepend(uiContainer);
 
         // Aufrufen der Funktion zum erstellen des Inhaltes des Einstellungsfensters
-        createsettingPopup();
+        await createsettingPopup();
 
         // Erstellen des Elementes für die Produktliste
         var addListButton = document.createElement("div");
@@ -1079,6 +974,7 @@
                 const productInfo = allData.find(data => data.ID === productID);
                 // Class "highlighted" dem Product Tile hinzufügen
                 productTile.classList.add('highlighted');
+                productTile.style.transition = "background-color 2.5s";
                 // ändern der Hintergrundfarbe der Produkte im Cache
                 productTile.style.backgroundColor = color;
                 // Prüfen ob ein Element mit der Class vorhanden ist
@@ -1162,7 +1058,7 @@
                         // Neuen Wert für den Favoriten der Datenbank hinzufügen                // Abhilfe könnte schaffen das Produkt dann zur Datenbank hinzuzufügen und als Favorit zu setzten, auch wenn es außerhalb dessichtbaren bereiches ist
                         data.Favorit = !isFav;
                         const updateRequest = objectStore.put(data);
-                        updateRequest.onsuccess = async function(event) {
+                        updateRequest.onsuccess = function(event) {
                             if(debug){console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`)};
                             // Visuelle Elemente Updaten
                             isFav = !isFav;
@@ -1172,7 +1068,7 @@
                                 favElement.style.color = "white";
                             }
                             // Aktualisieren der Daten
-                            allData = await getAllDataFromDatabase();
+                            allData = getAllDataFromDatabase();
                         };
                         updateRequest.onerror = function(event) {
                             console.log(`Fehler beim Aktualisieren des Favorit-Werts für ID ${productID}.`);
@@ -1229,9 +1125,6 @@
         // Aufrufen der Funktion um die Daten in die Datenbank zu speichern
         cacheProducts(visibleProductIDs, visibleProductTitles, visibleProductLinks, visibleProductImages, visibleProductButtons);
     }
-
-    // Hier setzen wir einen Konsolen-Listener
-
 
     //Auto Scan per Befehlszeile starten -> autoscan(5) -> Scannt bis Seite 5
     window.autoscan = function(value) {
@@ -1503,7 +1396,7 @@
         });
     }
 
-    // Alled Daten in der Datenbank abrufen
+// Alled Daten in der Datenbank abrufen
     function getAllDataFromDatabase() {
         return new Promise((resolve, reject) => {
             const cachedProductIDs = localStorage.getItem('cachedProductIDs');
@@ -1615,31 +1508,39 @@
     // Funktion zum Erstellen des Popups
     async function createPopup() {
         if(!openList){
-            openList = 1;
-            var page = 1;
-            var startCount = 0;
-            var stopCount = startCount + popupDefaultCount;
+            // Anzeigen der gespeicherten Daten aus dem Cache
+            var cachedProductIDs = getCachedProductIDs();
             var productCacheLength = await getProductCacheLength();
-            var data = allData;
-            var dataIDs = await getCachedProductIDs();
+            var allData = await getAllDataFromDatabase();
+            //Start Bereich angeben // Start bei 0
+            var startCount = 0;
+            var popupPageCurrent = 1;
+            var popupPageMax;
+            // Errechnet den Anfang der Angezeigten produkte
+            var stopCount = (startCount + popupDefaultCount);
+            if(stopCount >= productCacheLength){
+                stopCount = productCacheLength;
+            }
+            // Errechnet die anzahl der Seiten
+            popupPageMax = Math.ceil(productCacheLength / popupDefaultCount);
+            // popupDefaultCount -> Anzahl die Pro anzeigen angezeigt werden soll
 
-
-
-            var popupBackgroundDiv = document.createElement('div');
-            popupBackgroundDiv.setAttribute("id","popup-background-div");
-            popupBackgroundDiv.style.cssText = popupBackgroundDivCSS;
-            popupBackgroundDiv.addEventListener('click', function(event) {
-                closePopup();
-            })
-
+            // Erzeugen des Popups || -> CSS zum restlichen CSS
+            openList = true;
             var popup = document.createElement('div');
             popup.setAttribute('id', 'vine-viewer-popup');
-            popup.style.cssText = popupCSS;
-
-            var popupInner = document.createElement('div');
-            popupInner.setAttribute('id', 'popup-inner');
-            popupInner.style.cssText = popupInnerCSS;
-            popup.appendChild(popupInner);
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.width = '75%';
+            popup.style.height = '75%';
+            popup.style.backgroundColor = 'white';
+            popup.style.boxShadow = '0px 0px 50px 10px rgba(0, 0, 0, 0.9)';
+            popup.style.border = '1px solid black';
+            popup.style.padding = '10px';
+            popup.style.zIndex = '999';
+            popup.style.borderRadius = "15px";
 
             // Erstellen des schließen Buttons
             var closeButton = document.createElement('div');
@@ -1649,59 +1550,24 @@
             closeButton.style.right = '10px';
             closeButton.style.cursor = 'pointer';
             closeButton.addEventListener('click', function() {
-                closePopup();
+                document.body.removeChild(popup);
+                openList = false;
             });
 
-            var popupTopContainer = document.createElement('div');
-            popupTopContainer.setAttribute('id', 'popupTopContainer');
-            popupTopContainer.style.cssText = popupTopContainerCSS;
+            popup.appendChild(closeButton);
 
-            var popupTopContainerNav = document.createElement('div');
-            popupTopContainerNav.setAttribute('id', 'popupTopContainerNav');
-            popupTopContainerNav.style.padding = '5px';
+            // Erstellen des Such Containers
+            var searchContainer = document.createElement('div');
+            searchContainer.style.height = '35px';
 
-            popupTopContainer.appendChild(popupTopContainerNav);
-
-            const navoptions = [
-                ["favs", "Favoriten"],
-                ["all", "Alle Produkte"]
-            ]
-
-            for(var no = 0; no <= (navoptions.length -1); no++){
-                var navigationoption = document.createElement('span');
-                navigationoption.style.cssText = popupTopContainerItemCSS;
-                navigationoption.textContent = navoptions[no][1] + " |";
-                navigationoption.setAttribute('id', navoptions[no][0]);
-                if(no == 0){
-                    navigationoption.style.fontWeight = 'bold';
-                };
-                navigationoption.addEventListener('click', async function(event) {
-                    var clickedItemId = event.target.id;
-                    var spanElements = document.querySelectorAll("#popupTopContainerNav span");
-                    spanElements.forEach(function(span) {
-                        span.style.fontWeight = 'normal';
-                    });
-                    event.target.style.fontWeight = 'bold';
-                    page = 1;
-                    getPopupData(clickedItemId);
-                    searchInput.value = "";
-                });
-                popupTopContainerNav.appendChild(navigationoption);
-            };
-
-            var popupTopContainerSearch = document.createElement('div');
-            popupTopContainerSearch.setAttribute('id', 'popupTopContainerSearch');
-            popupTopContainerSearch.style.padding = '5px';
-
-            // Erstellen des Titels der Suchleiste
             var searchTitel = document.createElement('span');
             searchTitel.style.height = '30px';
             searchTitel.style.width = '50px';
-            searchTitel.style.paddingRight = '5px';
+            searchTitel.style.padding = '5px';
             searchTitel.style.fontWeight = 'bold';
             searchTitel.textContent = 'Filter: ';
 
-            popupTopContainerSearch.appendChild(searchTitel);
+            searchContainer.appendChild(searchTitel);
 
             // Erstellen der Suche
             var searchInput = document.createElement('input');
@@ -1711,38 +1577,52 @@
             searchInput.style.width = '500px';
             searchInput.style.padding = '5px';
             searchInput.addEventListener('input', function(event) {
-                // Such Funktion
-                //search(); // <- Kann bei zu großen Datenmengen zu hängern führen
+                searchItems();
             });
-            searchInput.addEventListener("keyup", function(event) {
-                if (event.keyCode === 13) {
-                    // Wenn die Enter-Taste gedrückt wurde, Button klicken
-                    searchButton.click();
+            searchContainer.appendChild(searchInput);
+            popup.appendChild(searchContainer);
+
+            // Erstellen der Navigation im popup
+            var productCountContainer = document.createElement('div');
+            productCountContainer.style.marginBottom = "5px";
+            productCountContainer.style.paddingLeft = "5px";
+
+            var popupNavigationContent = document.createElement('div');
+            popupNavigationContent.style.display = "flex";
+            popupNavigationContent.style.justifyContent = "center";
+            popupNavigationContent.style.alignItems = "center";
+
+            var productCount = document.createElement('span');
+            productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+            productCount.style.marginRight = "10px";
+
+            // Erstellen wie viele Produkte angeeigt werden
+            var productCountSelect = document.createElement('select');
+            productCountSelect.addEventListener('change', function(event) {
+                popupDefaultCount = parseInt(event.target.value);
+                localStorage.setItem("popupDefaultCount", popupDefaultCount);
+                var popupPage = document.getElementById('popup-page');
+                popupPageMax = Math.ceil(productCacheLength / popupDefaultCount);
+                popupPageCurrent = 1;
+                startCount = 0;
+                stopCount = (startCount + popupDefaultCount);
+                if(productCacheLength <= popupDefaultCount){
+                    stopCount = (productCacheLength)
                 }
+                popupPage.textContent = popupPageCurrent + "/" + popupPageMax;
+                productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+                removeItemList();
+                buttonBack.disabled = true;
+                buttonBack.style.cursor = "not-allowed"
+                buttonNext.disabled = false;
+                buttonNext.style.cursor = "pointer"
+                if(productCacheLength<=popupDefaultCount){
+                    buttonNext.disabled = true;
+                    buttonNext.style.cursor = "not-allowed"
+                }
+                // Inhalt der Liste neu laden
+                addItemList(startCount, stopCount);
             });
-
-            var searchButton = document.createElement('button');
-            searchButton.textContent = "Suchen";
-            searchButton.addEventListener('click', function(event) {
-                search();
-            });
-
-            popupTopContainerSearch.appendChild(searchInput);
-            popupTopContainerSearch.appendChild(searchButton);
-            popupTopContainer.appendChild(popupTopContainerSearch);
-
-            // Navigation
-            var popupTopContainerItems = document.createElement('div');
-            popupTopContainerItems.setAttribute('id', 'popup-top-items');
-            popupTopContainerItems.style.cssText = popupTopContainerSelectCSS;
-
-            popupTopContainer.appendChild(popupTopContainerItems);
-
-            var popupContainerItemsSpan = document.createElement('span');
-            popupContainerItemsSpan.textContent = "xx - xx / XXX";
-            popupContainerItemsSpan.style.cssText = popupContainerItemsSpanCSS;
-
-            popupTopContainerItems.appendChild(popupContainerItemsSpan);
 
             // Angabe der Optionen der Produkt Anzahl Auswahl
             const options = [
@@ -1751,17 +1631,7 @@
                 [100,"100"],
                 [250,"250"]
             ];
-
-            var popupTopContainerProductCountSelect = document.createElement('select');
-
-            popupTopContainerProductCountSelect.addEventListener('change', function(event) {
-                popupDefaultCount = parseInt(event.target.value);
-                localStorage.setItem("popupDefaultCount", popupDefaultCount);
-                updatePopup();
-            });
-
-            popupTopContainerItems.appendChild(popupTopContainerProductCountSelect);
-
+            // Hinzufügen der optionen zum Select Input
             for(var o = 0; o <= (options.length -1); o++){
                 var option = document.createElement("option");
                 option.value = options[o][0];
@@ -1769,317 +1639,186 @@
                 if(option.value == popupDefaultCount){
                     option.selected = true;
                 }
-                popupTopContainerProductCountSelect.appendChild(option);
+                productCountSelect.appendChild(option);
             }
 
+            // Seiten Navigation erstellen
+            popupNavigationContent.appendChild(productCount);
+            popupNavigationContent.appendChild(productCountSelect);
 
-            var popupTopContainerPages = document.createElement('div');
-            popupTopContainerPages.setAttribute('id', 'popup-top-pages');
-            popupTopContainerPages.style.cssText = popupTopContainerPagesCSS;
+            var productCountButtons = document.createElement('div');
+            productCountButtons.style.display = "flex";
+            productCountButtons.style.justifyContent = "center";
+            productCountButtons.style.alignItems = "center";
+            productCountButtons.style.margin = "5px";
 
-            popupTopContainer.appendChild(popupTopContainerPages);
-
-            var popupButtonBack = document.createElement('button');
-            popupButtonBack.textContent = "<";
-            popupButtonBack.addEventListener('click', function(event) {
-                page--;
-                updatePopup();
+            var currentPage = document.createElement('div');
+            currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
+            currentPage.setAttribute("id","popup-page");
+            currentPage.style.margin = "0px 10px";
+            // Button Popupliste zurück
+            var buttonBack = document.createElement('button');
+            buttonBack.disabled = true;
+            buttonBack.style.cursor = "not-allowed"
+            buttonBack.textContent = "<";
+            buttonBack.addEventListener('click', function(event) {
+                removeItemList();
+                startCount = (startCount - popupDefaultCount);
+                stopCount = ((startCount + (popupDefaultCount * 2)) - popupDefaultCount);
+                popupPageCurrent = popupPageCurrent - 1;
+                if(startCount <= 0){
+                    startCount = 0;
+                    buttonBack.disabled = true;
+                    buttonBack.style.cursor = "not-allowed"
+                }
+                buttonNext.disabled = false;
+                buttonNext.style.cursor = "pointer"
+                productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+                currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
+                addItemList(startCount, stopCount);
+                searchItems();
+            });
+            // Button Popupliste weiter
+            var buttonNext = document.createElement('button');
+            buttonNext.textContent = ">";
+            if(stopCount >= productCacheLength){
+                buttonNext.disabled = true;
+                buttonNext.style.cursor = "not-allowed"
+            }
+            buttonNext.addEventListener('click', function(event) {
+                removeItemList();
+                startCount = (startCount + popupDefaultCount);
+                stopCount = (stopCount + popupDefaultCount);
+                popupPageCurrent = popupPageCurrent + 1;
+                if(stopCount >= productCacheLength){
+                    stopCount = productCacheLength;
+                    buttonNext.disabled = true;
+                    buttonNext.style.cursor = "not-allowed"
+                }
+                buttonBack.disabled = false;
+                buttonBack.style.cursor = "pointer"
+                productCount.textContent = (startCount + 1) + " - " + stopCount + " / " + productCacheLength;
+                currentPage.textContent = popupPageCurrent + "/" + popupPageMax;
+                addItemList(startCount, stopCount)
+                searchItems();
             });
 
-            popupTopContainerPages.appendChild(popupButtonBack);
+            // Elementen der Popup Liste hinzufügen
+            productCountButtons.appendChild(buttonBack);
+            productCountButtons.appendChild(currentPage);
+            productCountButtons.appendChild(buttonNext);
 
-            var popupDisplayPages = document.createElement('span');
-            popupDisplayPages.setAttribute('id', 'popup-top-pages-display');
-            popupDisplayPages.textContent = " - / - ";
-            popupDisplayPages.style.cssText = popupDisplayPagesCSS;
+            productCountContainer.appendChild(popupNavigationContent);
+            productCountContainer.appendChild(productCountButtons);
+            popup.appendChild(productCountContainer);
+// Erstellen des Containers der Liste
+            var productListContainer = document.createElement('div');
+            productListContainer.style.overflow = 'auto';
+            productListContainer.style.height = 'calc(100% - 80px)';
+            productListContainer.style.padding = "5px";
 
-            popupTopContainerPages.appendChild(popupDisplayPages);
+            // Funktion zum durchlaufen der Datenbank und hinzufügen der Produkte zur Liste
+            function addItemList(startCount, stopCount){
+                for (startCount; startCount <= (stopCount - 1); startCount++) {
+                    // Laden der Produk Informationen
+                    var productID = cachedProductIDs[startCount];
+                    var title = allData[startCount].Titel;
+                    var link = allData[startCount].Link;
+                    var image = allData[startCount].BildURL;
+                    var buttonContent = allData[startCount].Button;
+                    var date = allData[startCount].Datum;
+                    if(debug == true){console.log((startCount+1) + " - Titel: " + title)};
+                    // Titel, Bild & Button müssen vorhanden sein
+                    if (title && image && buttonContent) {
+                        // Erstellen eines Produkt Containers
+                        var productContainer = document.createElement('div');
+                        productContainer.classList.add('product-container');
+                        productContainer.style.display = 'flex';
+                        productContainer.style.alignItems = 'center';
+                        productContainer.style.marginBottom = '10px';
+                        productContainer.style.marginRight = '10px';
+                        // Bild zu dem Produkt hinzufügen
+                        var imageElement = document.createElement('img');
+                        imageElement.src = image;
+                        imageElement.style.width = '100px';
+                        imageElement.style.height = '100px';
+                        imageElement.style.objectFit = 'cover';
+                        imageElement.style.marginRight = '10px';
+                        // Datum der Liste hinzufügen
+                        var dateElement = document.createElement('div');
+                        //dateElement.textContent = date.replace(',', '\n');
+                        dateElement.textContent = date;
+                        dateElement.style.marginRight = '10px';
+                        dateElement.style.width = '100px';
+                        dateElement.style.textAlign = 'center';
+                        // Link zum Produkt einbinden
+                        var titleElement = document.createElement('a');
+                        titleElement.classList.add('product-title');
+                        titleElement.textContent = title;
+                        titleElement.href = link;
+                        titleElement.target = "_blank";
+                        titleElement.style.flex = '1';
+                        // Button Container zur Liste hinzufügen
+                        var buttonContainer = document.createElement('span');
+                        buttonContainer.style.display = 'flex';
+                        buttonContainer.style.alignItems = 'center';
+                        buttonContainer.classList.add('a-button');
+                        buttonContainer.classList.add('a-button-primary');
+                        buttonContainer.classList.add('vvp-details-btn');
+                        // Button inhalt zur Liste hinzufügen
+                        var buttonSpan = document.createElement('span');
+                        buttonSpan.innerHTML = buttonContent;
+                        buttonSpan.style.width = '125px';
+                        buttonSpan.style.textAlign = 'right';
+                        buttonSpan.classList.add('a-button-inner');
 
-            var popupButtonNext = document.createElement('button');
-            popupButtonNext.textContent = ">";
-            popupButtonNext.addEventListener('click', function(event) {
-                page++;
-                updatePopup();
-            });
+                        buttonContainer.appendChild(buttonSpan);
 
-            popupTopContainerPages.appendChild(popupButtonNext);
-
-            // Beginn Popup Content
-            var popupContentContainer = document.createElement('div');
-            popupContentContainer.style.cssText = popupContentContainerCSS;
-
-
-            function addItemList(data, page){
-                var cacheLength = data.length;
-                try{
-                    if(cacheLength == 0){
-                        var productListMessage = document.createElement('span');
-                        productListMessage.setAttribute('id', "productListMessage");
-                        productListMessage.textContent = "Es wurden keine Produkte gefunden."
-                        popupContentContainer.insertBefore(productListMessage, popupContentContainer.firstChild);
-                        page = 0;
-                        startCount = -1;
-                        stopCount = 0;
-                    }else{
-                        startCount = (page * popupDefaultCount) - popupDefaultCount;
-                        stopCount = startCount + popupDefaultCount;
-                        if(stopCount >= cacheLength){
-                            stopCount = cacheLength;
-                        }
-
-
-                        for(var x = startCount; x <= (stopCount - 1); x++){
-                            var pID = data[x].ID;
-                            var title = data[x].Titel;
-                            var link = data[x].Link;
-                            var image = data[x].BildURL;
-                            var buttonContent = data[x].Button;
-                            var date = data[x].Datum;
-                            var fav = data[x].Favorit;
-
-                            if(title && image && buttonContent){
-                                 // Erstellen eines Produkt Containers
-                                var productContainer = document.createElement('div');
-                                productContainer.classList.add('product-container');
-                                productContainer.style.cssText = listProductContainerCSS;
-
-                                var listFavElement = document.createElement('span');
-                                listFavElement.textContent = "★"
-                                listFavElement.style.cssText = favCSS;
-                                listFavElement.setAttribute('id', pID);
-                                if(fav){
-                                    listFavElement.style.color = "#ffe143";
-                                }
-                                listFavElement.addEventListener('click', function(event) {
-                                    var eventTarget = event.target;
-                                    var productID = event.target.id;
-                                    var isFav = false;
-                                    if(dataIDs.includes(productID)){
-                                        const productInfo = data.find(eventData => eventData.ID === productID);
-                                        isFav = productInfo.Favorit;
-                                    }
-
-                                    // Verbindung mit der Datenbank herstellen
-                                    const request = indexedDB.open(dbName, dbVersion);
-
-                                    request.onerror = function(event) {
-                                        console.log("Fehler beim Öffnen der Datenbank ID: FAV");
-                                    };
-
-                                    request.onsuccess = function(event) {
-                                        const db = event.target.result;
-
-                                        const transaction = db.transaction([objectStoreName], "readwrite");
-                                        const objectStore = transaction.objectStore(objectStoreName);
-                                        // Suchen der Product ID in der Datenbank
-                                        const getRequest = objectStore.get(productID);
-                                        getRequest.onsuccess = function(event) {
-                                            const eventData = event.target.result;
-                                            if (eventData) { // Beim scannen des sichtbaren Bereiches kommt es hier zu einem fehler, da die ID die sich halb im sichtfeld befindet, noch nicht in der Datenbank eingetragen ist
-                                                // Neuen Wert für den Favoriten der Datenbank hinzufügen                // Abhilfe könnte schaffen das Produkt dann zur Datenbank hinzuzufügen und als Favorit zu setzten, auch wenn es außerhalb dessichtbaren bereiches ist
-                                                eventData.Favorit = !isFav;
-                                                const updateRequest = objectStore.put(eventData);
-                                                updateRequest.onsuccess = async function(event) {
-                                                    var newdata = [];
-                                                    if(debug){console.log(`Favorit-Wert für ID ${productID} wurde erfolgreich aktualisiert.`)};
-                                                    // Visuelle Elemente Updaten
-                                                    isFav = !isFav;
-                                                    if(isFav){
-                                                        eventTarget.style.color = "#ffe143";
-                                                    }else{
-                                                        eventTarget.style.color = "white";
-                                                        setTimeout(() => {
-                                                            eventTarget.parentNode.style.height = "0px";
-                                                            eventTarget.parentNode.style.opacity = "0";
-                                                            eventTarget.parentNode.style.marginBottom = "0px";
-                                                            setTimeout(() => {
-                                                               eventTarget.parentNode.remove();
-                                                               sumItem--;
-                                                               stopItem--;
-                                                               topItems.textContent = startItem + " - " + stopItem + " / " + sumItem;
-                                                            }, 2100);
-                                                        }, 5000);
-                                                    }
-                                                    for(var f = 0; f < data.length; f++){
-                                                        if(data[f].ID === productID){
-                                                            data[f].Favorit = !data[f].Favorit
-                                                        }
-                                                    }
-                                                    // Aktualisieren der Daten
-                                                    allData = await getAllDataFromDatabase();
-                                                };
-                                                updateRequest.onerror = function(event) {
-                                                    console.log(`Fehler beim Aktualisieren des Favorit-Werts für ID ${productID}.`);
-                                                };
-                                            } else {
-                                                // Product ID wurde nicht in der Datenbank gefunden
-                                                console.log(`Datensatz mit ID ${productID} wurde nicht gefunden.`);
-                                            }
-                                        };
-
-                                        getRequest.onerror = function(event) {
-                                            console.log(`Fehler beim Abrufen des Datensatzes mit ID ${productID}.`);
-                                        };
-                                    };
-
-
-
-                                });
-
-
-                                var imageElement = document.createElement('img');
-                                imageElement.src = image;
-                                imageElement.style.cssText = listImageElementCSS;
-
-                                var dateElement = document.createElement('div');
-                                dateElement.textContent = date;
-                                dateElement.style.cssText = listDateElementCSS;
-
-                                var titleElement = document.createElement('a');
-                                titleElement.classList.add('product-title');
-                                titleElement.textContent = title;
-                                titleElement.style.cssText = listTitleElementCSS;
-                                titleElement.href = link;
-                                titleElement.target = "_blank";
-
-                                var buttonContainer = document.createElement('span');
-                                buttonContainer.classList.add('a-button');
-                                buttonContainer.classList.add('a-button-primary');
-                                buttonContainer.classList.add('vvp-details-btn');
-                                buttonContainer.style.cssText = listButtonContainerCSS;
-
-                                var buttonSpan = document.createElement('span');
-                                buttonSpan.innerHTML = buttonContent;
-                                buttonSpan.classList.add('a-button-inner');
-                                buttonSpan.style.cssText = listButtonSpanCSS;
-
-                                buttonContainer.appendChild(buttonSpan);
-
-                                productContainer.appendChild(listFavElement);
-                                productContainer.appendChild(imageElement);
-                                productContainer.appendChild(dateElement);
-                                productContainer.appendChild(titleElement);
-                                productContainer.appendChild(buttonContainer);
-
-                                popupContentContainer.insertBefore(productContainer, popupContentContainer.firstChild);
-                            }
-
-
-                            var Item = document.createElement('p');
-                            Item.setAttribute('id', 'product-container');
-                            Item.textContent = "[" + (x + 1) + "] " + data[x].Titel;
-                            //popupContentContainer.appendChild(Item);
-                        }
-                    }
-
-                    var pageMax = Math.ceil(cacheLength / popupDefaultCount);
-
-                    if(page <=1){
-                        popupButtonBack.disabled = true;
-                        popupButtonBack.style.cursor = "not-allowed";
-                    }else{
-                        popupButtonBack.disabled = false;
-                        popupButtonBack.style.cursor = "pointer";
-                    }
-
-                    if(page >= pageMax){
-                        popupButtonNext.disabled = true;
-                        popupButtonNext.style.cursor = "not-allowed";
-                    } else {
-                        popupButtonNext.disabled = false;
-                        popupButtonNext.style.cursor = "pointer";
-                    }
-
-                    var pageDisplay = document.getElementById("popup-top-pages-display");
-                    pageDisplay.textContent = page + " / " + pageMax;
-
-                    var topItemsContainer = document.getElementById("popup-top-items");
-                    var topItems = topItemsContainer.querySelector("span");
-                    var startItem = (startCount + 1);
-                    var stopItem = stopCount;
-                    var sumItem = cacheLength;
-                    topItems.textContent = startItem + " - " + stopItem + " / " + sumItem;
-
-                }catch(error){
-                    console.log("Error: " + error);
-                    return;
-                }
-
-
-            }
-
-            function getPopupData(arg){
-                data = [];
-                switch (arg){
-                    case "favs":
-                        for(var fc = 0;fc <= (allData.length - 1); fc++){
-                            var favorit = allData[fc].Favorit;
-                            if(favorit){
-                                data.push(allData[fc]);
-                            }
-                        }
-                        break;
-                    default:
-                        data = allData;
-                }
-                dataIDs = data.map(item => item.ID);
-                updatePopup();
-            }
-
-            function search() {
-                var filterData = [];
-                var filter = searchInput.value.toLowerCase();
-                for (var sc = 0; sc <= (data.length - 1); sc++){
-                    var titel = data[sc].Titel;
-                    if (titel.toLowerCase().includes(filter.toLowerCase())) {
-                        filterData.push(data[sc]);
+                        // Erstellen eines Produkt Containers
+                        productContainer.appendChild(imageElement);
+                        productContainer.appendChild(dateElement);
+                        productContainer.appendChild(titleElement);
+                        productContainer.appendChild(buttonContainer);
+                        productListContainer.insertBefore(productContainer, productListContainer.firstChild);
+                        //productListContainer.appendChild(productContainer);
                     }
                 }
-                removeItemList();
-                addItemList(filterData, page)
+                // Produkt Liste dem Container hinzufügen
+                popup.appendChild(productListContainer);
             }
 
-            function updatePopup(){
-                // Get Search Input
-                var searchInput = document.getElementById('popup-search-input');
-                var searchQuery = searchInput.value.toLowerCase();
-                removeItemList();
-                addItemList(data, page);
-            }
-
+            // Funktion um die Produkt Liste zu leeren
             function removeItemList() {
                 var elementsToRemove = document.querySelectorAll('.product-container');
-                try {
-                    var productListMessageRemove = document.getElementById("productListMessage");
-                    productListMessageRemove.remove();
-                } catch (error){
-                    // Message ist nicht vorhanden
-                }
                 for (var i = 0; i < elementsToRemove.length; i++) {
                     var element = elementsToRemove[i];
                     element.parentNode.removeChild(element);
                 }
             }
 
+            // Funktion zum Filtern der aktuell angezeigten liste nach einem bestimmten suchbegriff
+            function searchItems() {
+                var searchInput = document.getElementById('popup-search-input');
+                var searchQuery = searchInput.value.toLowerCase();
+                var productContainers = popup.getElementsByClassName('product-container');
+                // Durchlaufen jedes angezeigten Produktes einer Seite in der Popup Liste
+                for (var i = 0; i < productContainers.length; i++) {
+                    var productContainer = productContainers[i];
+                    var titleElement = productContainer.querySelector('.product-title');
+                    var title = titleElement.textContent.toLowerCase();
 
-            document.body.appendChild(popupBackgroundDiv);
-
-            popupInner.appendChild(closeButton);
-            popupInner.appendChild(popupTopContainer);
-            popupInner.appendChild(popupContentContainer);
+                    if (title.includes(searchQuery)) {
+                        productContainer.style.display = 'flex';
+                    } else {
+                        productContainer.style.display = 'none';
+                    }
+                }
+            }
+            // Produkte der Liste hinzufügen
+            addItemList(startCount,stopCount);
             document.body.appendChild(popup);
-
-            getPopupData("favs");
-
-        }
-
-        function closePopup(){
-            document.body.removeChild(popup);
-            document.body.removeChild(popupBackgroundDiv);
-            openList = false;
         }
     }
-
     // Funktion zum Filtern der Produkte basierend auf der Sucheingabe
     function filterProducts(searchText) {
         var productsContainer = document.getElementById('product-list');
@@ -2144,17 +1883,6 @@
             if(localStorage.getItem("autoScan") == "false"){
                 scanAndCacheVisibleProducts();
             }
-        });
-        window.addEventListener("keydown", function(event) {
-        if (event.keyCode === 27 || event.key === "Escape") {
-            if(openList === 1){
-                var popup = document.getElementById('vine-viewer-popup');
-                var popupBackgroundDiv = document.getElementById('popup-background-div');
-                document.body.removeChild(popup);
-                document.body.removeChild(popupBackgroundDiv);
-                openList = false;
-            }
-        }
         });
     }
 })();
