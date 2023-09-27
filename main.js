@@ -614,7 +614,6 @@
             var uiContainer = document.getElementById('ui-container')
             uiContainer.appendChild(updateMessageDiv);
 
-
             updateMessageContent.addEventListener('click', function() {
                 try{
                     eval(onClickAction);
@@ -682,7 +681,7 @@
         document.body.prepend(uiContainer);
 
         // Aufrufen der Funktion zum erstellen des Inhaltes des Einstellungsfensters
-        createsettingPopup();
+        await createsettingPopup();
 
         // Erstellen des Elementes für die Produktliste
         var addListButton = document.createElement("div");
@@ -2139,7 +2138,6 @@
             await scanAndCacheAllProducts();
             if(debug){console.log("[INI] - Alle Produkte Scannen")};
         }
-
         window.addEventListener('scroll', function(event){
             if(localStorage.getItem("autoScan") == "false"){
                 scanAndCacheVisibleProducts();
