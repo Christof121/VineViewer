@@ -1887,17 +1887,17 @@
                                                         eventTarget.style.color = "#ffe143";
                                                     }else{
                                                         eventTarget.style.color = "white";
-                                                        setTimeout(() => {
-                                                            eventTarget.parentNode.style.height = "0px";
-                                                            eventTarget.parentNode.style.opacity = "0";
-                                                            eventTarget.parentNode.style.marginBottom = "0px";
-                                                            setTimeout(() => {
-                                                               eventTarget.parentNode.remove();
-                                                               sumItem--;
-                                                               stopItem--;
-                                                               topItems.textContent = startItem + " - " + stopItem + " / " + sumItem;
-                                                            }, 2100);
-                                                        }, 5000);
+                                                        //setTimeout(() => {
+                                                        //    eventTarget.parentNode.style.height = "0px";
+                                                        //    eventTarget.parentNode.style.opacity = "0";
+                                                        //    eventTarget.parentNode.style.marginBottom = "0px";
+                                                        //    setTimeout(() => {
+                                                        //       eventTarget.parentNode.remove();
+                                                        //       sumItem--;
+                                                        //       stopItem--;
+                                                        //       topItems.textContent = startItem + " - " + stopItem + " / " + sumItem;
+                                                        //    }, 2100);
+                                                        //}, 5000);
                                                     }
                                                     for(var f = 0; f < data.length; f++){
                                                         if(data[f].ID === productID){
