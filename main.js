@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vine Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.04
+// @version      1.03
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -672,7 +672,6 @@
                         console.log('Alte Version: ' + oldVersion);
                         console.log('Neue Version: ' + newVersion);
                         if(updateDatabaseContent(oldVersion, newVersion)){
-                            main();
                             updateData = false;
                         }else{
                             throw new Error('Aktualisieren der Daten nicht möglich!');
@@ -683,6 +682,8 @@
                 }else{
                     alert("Aufgrund von Strukturänderungen ist eine verwendung ohne geänderter Datenbank mit dieser Version nicht möglich");
                 }
+            }else{
+                main();
             }
         };
 
