@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Vine Viewer
 // @namespace    http://tampermonkey.net/
-// @version      1.03
+// @version      1.04
 // @description  Erweiterung der Produkt Übersicht von Amazon Vine
 // @author       Christof
 // @match        *://www.amazon.de/vine/*
@@ -649,7 +649,10 @@
 
 
     // Funktion wird nach dem vollständigen Laden der Seite aufgerufen
-    function connectDatabase(){
+    async function connectDatabase(){
+        var updateData;
+        var oldVersion;
+        var newVersion;
         // Verbindungsaufbau zur Datenbank
         const request = indexedDB.open(dbName, dbVersion);
 
@@ -661,17 +664,54 @@
         // Verbindung erfolgreich
         request.onsuccess = function(event) {
             console.log("Verbindung zur Datenbank hergestellt");
-            main();
+            if(updateData && oldVersion !== 0){
+                console.log("Daten werden angepasst");
+                var dataUpgradeconformation = window.confirm("Die Struktur der Datenbank wurde geändert. Um die Alten Daten weiterhin zu verwenden ist es notwendig die Daten zu konvertieren. Dies kann einen Moment dauern!");
+                if(dataUpgradeconformation){
+                    try{
+                        console.log('Alte Version: ' + oldVersion);
+                        console.log('Neue Version: ' + newVersion);
+                        if(updateDatabaseContent(oldVersion, newVersion)){
+                            main();
+                            updateData = false;
+                        }else{
+                            throw new Error('Aktualisieren der Daten nicht möglich!');
+                        }
+                    } catch (error){
+                        alert("Fehler: " + error);
+                    }
+                }else{
+                    alert("Aufgrund von Strukturänderungen ist eine verwendung ohne geänderter Datenbank mit dieser Version nicht möglich");
+                }
+            }
         };
 
         // Falls neue Version von Datenbank vorhanden
         request.onupgradeneeded = function(event) {
             const db = event.target.result;
-            const objectStore = db.createObjectStore(objectStoreName, { keyPath: "ID" });
-            console.log("Problem mit der Datenbank");
+            oldVersion = event.oldVersion;
+            newVersion = event.newVersion;
+
+            updateData = true;
+
+            if(!db.objectStoreNames.contains(objectStoreName)){
+                const objectStore = db.createObjectStore(objectStoreName, { keyPath: "ID" });
+            }
+            console.log("Datenbankstruktur wurde aktualisiert");
         };
     }
 
+    async function updateDatabaseContent(oldVersion, newVersion){
+        try{
+            allData = await getAllDataFromDatabase();
+            if(oldVersion < 2){
+                // Hier die Bilder in Base 64 umwandeln un neu speichern
+            }
+            return true;
+        } catch(error) {
+            return false;
+        }
+    }
 
     // Funktion zum Erstellen des UI
     async function createUI(){
