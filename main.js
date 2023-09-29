@@ -61,7 +61,7 @@
 
     //Einstellungen der IndexedDB
     const dbName = "VineData";
-    const dbVersion = 13;
+    const dbVersion = 32;
     const objectStoreName = "Products";
 
     // Einstellungs Menü Optionen
@@ -410,6 +410,32 @@
     text-align: right;
     `;
 
+    var updateOverlayContainerCSS = `
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10000;
+    background-color: #555555d4;
+    color: white;
+    `;
+
+    var updateOverlayContainerInnerCSS = `
+    width: 50%;
+    height: 50%;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    justify-content: center;
+    align-items: center;
+    font-size: 2vh;
+    display: flex;
+    flex-direction: column;
+    `;
+
     // Funktion Aufrufen um eine verbindung mti der Datenbank herzustellen
     window.addEventListener("DOMContentLoaded", connectDatabase());
 
@@ -668,17 +694,46 @@
                 console.log("Daten werden angepasst");
                 var dataUpgradeconformation = window.confirm("Die Struktur der Datenbank wurde geändert. Um die Alten Daten weiterhin zu verwenden ist es notwendig die Daten zu konvertieren. Dies kann einen Moment dauern!");
                 if(dataUpgradeconformation){
+                    var updateOverlayContainer = document.createElement('div');
+                    updateOverlayContainer.style.cssText = updateOverlayContainerCSS;
+                    updateOverlayContainer.setAttribute('id', 'update-overlay');
+
+                    var updateOverlayContainerInner = document.createElement('div');
+                    updateOverlayContainerInner.style.cssText = updateOverlayContainerInnerCSS;
+                    updateOverlayContainerInner.setAttribute('id', 'update-overlay-inner');
+
+                    var updateOverlayContainerInnerMsg = document.createElement('span');
+                    updateOverlayContainerInnerMsg.setAttribute('id', 'update-overlay-inner-msg');
+                    updateOverlayContainerInnerMsg.textContent = "Ein Update der Datenbank wird durchgeführt ...";
+                    updateOverlayContainerInnerMsg.style.margin = "25px";
+
+                    var updateOverlayContainerInnerImg = document.createElement('img');
+                    updateOverlayContainerInnerImg.setAttribute('id', 'update-overlay-inner-msg');
+                    updateOverlayContainerInnerImg.src = "https://media.tenor.com/On7kvXhzml4AAAAi/loading-gif.gif";
+                    updateOverlayContainerInnerImg.style.width = "25vh"
+
+                    updateOverlayContainerInner.appendChild(updateOverlayContainerInnerMsg)
+                    updateOverlayContainerInner.appendChild(updateOverlayContainerInnerImg)
+                    updateOverlayContainer.appendChild(updateOverlayContainerInner);
+                    document.body.appendChild(updateOverlayContainer);
                     try{
-                        console.log('Alte Version: ' + oldVersion);
-                        console.log('Neue Version: ' + newVersion);
                         if(updateDatabaseContent(oldVersion, newVersion)){
                             updateData = false;
+                            updateOverlayContainerInnerMsg.textContent = "Aktualisierung wurde erfolgreich durchgeführt.";
+                            updateOverlayContainerInnerImg.src = "https://cdn.pixabay.com/photo/2017/01/13/01/22/ok-1976099_1280.png";
                         }else{
                             throw new Error('Aktualisieren der Daten nicht möglich!');
                         }
                     } catch (error){
-                        alert("Fehler: " + error);
+                        updateOverlayContainerInnerMsg.textContent = "Es ist ein Fehler aufgetreten: " + error;
+                        updateOverlayContainerInnerImg.src = "https://cdn.pixabay.com/photo/2017/02/12/21/29/false-2061131_1280.png";
                     }
+                    var updateOverlayContainerInnerButton = document.createElement('button');
+                    updateOverlayContainerInnerButton.textContent = "Bestätigen"
+                    updateOverlayContainerInnerButton.addEventListener('click', function() {
+                        document.body.removeChild(document.getElementById("update-overlay"));
+                    });
+                    updateOverlayContainerInner.appendChild(updateOverlayContainerInnerButton);
                 }else{
                     alert("Aufgrund von Strukturänderungen ist eine verwendung ohne geänderter Datenbank mit dieser Version nicht möglich");
                 }
@@ -705,19 +760,15 @@
     async function updateDatabaseContent(oldVersion, newVersion){
         try{
             allData = await getAllDataFromDatabase();
-            oldVersion = 0;
             if(oldVersion < 2){
                 // Schleife durch alle Datensätze und konvertiere die Bild-URLs in Base64
                 for (var i = 0; i < allData.length; i++) {
                     var imageUrl = allData[i].BildURL;
                     var base64Image = await loadImageAndConvertToBase64(imageUrl);
-
                     // Setze das Base64-Bild in das Datenobjekt
                     allData[i].Bild64 = base64Image;
                 }
             }
-            console.log(allData);
-
             // Datenbank nur einmal öffnen und aktualisieren
             await updateDataInDatabase(allData);
 
@@ -1525,7 +1576,6 @@
         productIDs.forEach(async function(productID, index) {
             // Prüfen ob die ID bereits in der Datenbank vorhanden ist
             const findid = await checkForIDInDatabase(productID);
-            image64[index] = await loadImageAndConvertToBase64(images[index]);
             if(findid == false){
                 // ID nicht in der Datenbank
                 if(debug == true){console.log("Produkt hinzuügen")}
@@ -1538,6 +1588,9 @@
                     month: '2-digit',
                     year: 'numeric'
                 });
+
+                image64[index] = await loadImageAndConvertToBase64(images[index]);
+
                 // Verbindung zur Datenbank herstellen
                 const request = indexedDB.open(dbName, dbVersion);
                 request.onerror = function(event) {
@@ -1937,7 +1990,7 @@
                             var pID = data[x].ID;
                             var title = data[x].Titel;
                             var link = data[x].Link;
-                            var image = data[x].BildURL;
+                            var image = data[x].Bild64;
                             var buttonContent = data[x].Button;
                             var date = data[x].Datum;
                             var fav = data[x].Favorit;
