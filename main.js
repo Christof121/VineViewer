@@ -61,7 +61,7 @@
 
     //Einstellungen der IndexedDB
     const dbName = "VineData";
-    const dbVersion = 32;
+    const dbVersion = 2;
     const objectStoreName = "Products";
 
     // Einstellungs Menü Optionen
