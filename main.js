@@ -61,7 +61,7 @@
 
     //Einstellungen der IndexedDB
     const dbName = "VineData";
-    const dbVersion = 1;
+    const dbVersion = 13;
     const objectStoreName = "Products";
 
     // Einstellungs Menü Optionen
@@ -705,13 +705,75 @@
     async function updateDatabaseContent(oldVersion, newVersion){
         try{
             allData = await getAllDataFromDatabase();
+            oldVersion = 0;
             if(oldVersion < 2){
-                // Hier die Bilder in Base 64 umwandeln un neu speichern
+                // Schleife durch alle Datensätze und konvertiere die Bild-URLs in Base64
+                for (var i = 0; i < allData.length; i++) {
+                    var imageUrl = allData[i].BildURL;
+                    var base64Image = await loadImageAndConvertToBase64(imageUrl);
+
+                    // Setze das Base64-Bild in das Datenobjekt
+                    allData[i].Bild64 = base64Image;
+                }
             }
+            console.log(allData);
+
+            // Datenbank nur einmal öffnen und aktualisieren
+            await updateDataInDatabase(allData);
+
             return true;
         } catch(error) {
             return false;
         }
+    }
+
+    async function loadImageAndConvertToBase64(imageUrl) {
+        return new Promise((resolve, reject) => {
+            var xhr = new XMLHttpRequest();
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var reader = new FileReader();
+                    reader.onloadend = function() {
+                        resolve(reader.result);
+                    };
+                    reader.readAsDataURL(xhr.response);
+                } else {
+                    reject('Fehler beim Herunterladen des Bildes');
+                }
+            };
+            xhr.open('GET', imageUrl);
+            xhr.responseType = 'blob';
+            xhr.send();
+        });
+    }
+
+
+    // Funktion zum Aktualisieren der gesamten Datenbank
+    async function updateDataInDatabase(updatedData) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, dbVersion);
+            request.onerror = function(event) {
+                reject('Fehler beim Öffnen der Datenbank ID:1');
+            };
+            request.onsuccess = function(event) {
+                const db = event.target.result;
+                const transaction = db.transaction([objectStoreName], 'readwrite');
+                const objectStore = transaction.objectStore(objectStoreName);
+
+                // Schleife durch die aktualisierten Daten und füge sie in die Datenbank ein
+                updatedData.forEach(data => {
+                    objectStore.put(data);
+                });
+
+                transaction.oncomplete = function(event) {
+                    resolve('Daten erfolgreich aktualisiert');
+                };
+
+                transaction.onerror = function(event) {
+                    reject('Fehler beim Aktualisieren der Daten');
+                };
+            };
+        });
     }
 
     // Funktion zum Erstellen des UI
@@ -1457,11 +1519,13 @@
     async function cacheProducts(productIDs, titles, links, images, buttons) {
         var cachedProductIDs = await getCachedProductIDs();
         var productCacheLength = await getProductCacheLength();
+        var image64 = [];
         if(debug == true){console.log("Cache: " + productCacheLength)};
         // Für jedes Produkt auf der Seite durchlaufen
         productIDs.forEach(async function(productID, index) {
             // Prüfen ob die ID bereits in der Datenbank vorhanden ist
             const findid = await checkForIDInDatabase(productID);
+            image64[index] = await loadImageAndConvertToBase64(images[index]);
             if(findid == false){
                 // ID nicht in der Datenbank
                 if(debug == true){console.log("Produkt hinzuügen")}
@@ -1487,6 +1551,7 @@
                         Titel: titles[index],
                         Link: links[index],
                         BildURL: images[index],
+                        Bild64: image64[index],
                         Button: buttons[index],
                         Datum: currentDate,
                         Favorit: false
