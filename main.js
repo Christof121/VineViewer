@@ -688,7 +688,7 @@
         };
 
         // Verbindung erfolgreich
-        request.onsuccess = function(event) {
+        request.onsuccess = async function(event) {
             console.log("Verbindung zur Datenbank hergestellt");
             if(updateData && oldVersion !== 0){
                 console.log("Daten werden angepasst");
@@ -717,10 +717,11 @@
                     updateOverlayContainer.appendChild(updateOverlayContainerInner);
                     document.body.appendChild(updateOverlayContainer);
                     try{
-                        if(updateDatabaseContent(oldVersion, newVersion)){
+                        if(await updateDatabaseContent(oldVersion, newVersion)){
                             updateData = false;
                             updateOverlayContainerInnerMsg.textContent = "Aktualisierung wurde erfolgreich durchgeführt.";
                             updateOverlayContainerInnerImg.src = "https://cdn.pixabay.com/photo/2017/01/13/01/22/ok-1976099_1280.png";
+                            main();
                         }else{
                             throw new Error('Aktualisieren der Daten nicht möglich!');
                         }
@@ -760,9 +761,11 @@
     async function updateDatabaseContent(oldVersion, newVersion){
         try{
             allData = await getAllDataFromDatabase();
+            var updateOverlayInnerMSG = document.getElementById("update-overlay-inner-msg");
             if(oldVersion < 2){
                 // Schleife durch alle Datensätze und konvertiere die Bild-URLs in Base64
                 for (var i = 0; i < allData.length; i++) {
+                    updateOverlayInnerMSG.textContent = "Ein Update der Datenbank wird durchgeführt ... " + i + " / " + allData.length;
                     var imageUrl = allData[i].BildURL;
                     var base64Image = await loadImageAndConvertToBase64(imageUrl);
                     // Setze das Base64-Bild in das Datenobjekt
@@ -1772,16 +1775,18 @@
 
     // Funktion zum Erstellen des Popups
     async function createPopup() {
+                    console.log("Click");
         if(!openList){
             openList = 1;
             var page = 1;
             var startCount = 0;
             var stopCount = startCount + popupDefaultCount;
+                        console.log("0 Click");
             var productCacheLength = await getProductCacheLength();
             var data = allData;
+            console.log("1 Click");
             var dataIDs = await getCachedProductIDs();
-
-
+            console.log("2 Click");
 
             var popupBackgroundDiv = document.createElement('div');
             popupBackgroundDiv.setAttribute("id","popup-background-div");
@@ -1824,7 +1829,6 @@
                 ["favs", "Favoriten"],
                 ["all", "Alle Produkte"]
             ]
-
             for(var no = 0; no <= (navoptions.length -1); no++){
                 var navigationoption = document.createElement('span');
                 navigationoption.style.cssText = popupTopContainerItemCSS;
